@@ -1,16 +1,17 @@
-### Data-generating process
+### CompStat project --- Max Schäfer
+
 rm(list=ls())
 
-set.seed(1234)
 
-# install.packages("glmnet")
+#install.packages("glmnet")
+#install.packages("randomcoloR")
+
 library(glmnet)
 library(mvtnorm)
 
 library(stringr)
 
 library(ggplot2)
-#install.packages("randomcoloR")
 library(randomcoloR)
 
 # Own modules
@@ -19,7 +20,7 @@ source("C:/Users/Max/Desktop/MASTER/computational_statistics/compstat-project/co
 
 
 
-generate_data <- function(n=200, n_G_attr, n_H_attr) {
+generate_data <- function(n=200, n_F_attr, n_G_attr, n_H_attr) {
 
 
   # Test function arguments
@@ -40,6 +41,10 @@ generate_data <- function(n=200, n_G_attr, n_H_attr) {
   H_sigma <- t(A) %*% A  # ensure matrix is positive-semidefinite
   #TODO sigma matrix must have positive covariances, see code snippets
   # also: ensure more correlation
+
+  #TODO, for now, Hs are uncorrelated --- dgp_1
+  H_variances <- runif(n=n_H_attr_cont, min=1, max=4)
+  H_sigma <- diag(H_variances)
 
   H_continuous <- rmvnorm(n=n, mean=H_mean, sigma=H_sigma)
   H_integers <- floor(rmvnorm(n=n, mean=H_mean, sigma=H_sigma))
@@ -66,10 +71,11 @@ generate_data <- function(n=200, n_G_attr, n_H_attr) {
   # Using a binomial distribution.
   #G_categorical <- replicate(n=n_G_attr/2, rbinom(n=n, size=10, prob=.5))
 
-
   G <- cbind(G_continuous, G_categorical)
 
 
+  # Draw features explaining treatment which are independent of outcome
+  F <- replicate(n=n_F_attr, rnorm(n=n, mean=2, sd=1))
 
 
   # Data-generating process
@@ -113,6 +119,13 @@ generate_data <- function(n=200, n_G_attr, n_H_attr) {
   beta_H[zero_coefs] <- 0
 
 
+  # Degree of sparseness in further (geographical) attributes explaining treatment
+  sparsity_rate_F <- .5
+  beta_F <- rep(.5, dim(F)[2])
+  zero_coefs <- sample(1:dim(F)[2], size=sparsity_rate_H*dim(F)[2])
+  beta_F[zero_coefs] <- 0
+
+
   # Treatment effect
   beta_DY <- -1
 
@@ -120,6 +133,7 @@ generate_data <- function(n=200, n_G_attr, n_H_attr) {
   # Treatment
   # --- linear model
   D <- 0 + G %*% beta_GD + eps_D
+  D <- 0 + G %*% beta_GD + F %*% beta_F + eps_D
   # --- logistic model
   #proba_binom_model <- exp(0 + G %*% beta_GD + eps_D) / (1 + exp(0 + G %*% beta_GD + eps_D))
   #D <- cbind(rbinom(n=n, size=1, prob=proba_binom_model))
@@ -128,46 +142,64 @@ generate_data <- function(n=200, n_G_attr, n_H_attr) {
   y <- 0 + D %*% beta_DY + G %*% beta_GY + H %*% beta_H + eps_Y
 
 
-  return(list(y=y, D=D, G=G, H=H))
+  return(list(y=y, D=D, F=F, G=G, H=H))
 }
 
 
+
+
 ### Main ---
+set.seed(1234)
+
 
 n <- 200
 n_G_attr <- 10
 n_H_attr <- 15
-
+n_F_attr <- 5
 
 # Create vector with covariate names.
+colname_F <- str_c(rep("F_", n_F_attr), seq(from=1, to=n_F_attr, by=1))
 colname_G <- str_c(rep("G_", n_G_attr), seq(from=1, to=n_G_attr, by=1))
 colname_H <- str_c(rep("H_", n_H_attr), seq(from=1, to=n_H_attr, by=1))
-colnames_DG <- c("D", colname_G)
-colnames_GH <- c(colname_G, colname_H)
+
+# Required for first selection step
 colnames_DGH <- c("D", colname_G, colname_H)
+colnames_DFGH <- c("D", colname_F, colname_G, colname_H)
 
 
+colnames_DG <- c("D", colname_G)
+colnames_DFG <- c("D", colname_F, colname_G)
 
-data <- generate_data(n=n, n_G_attr=n_G_attr, n_H_attr=n_H_attr)
+# Required for second selection step
+colnames_GH <- c(colname_G, colname_H)
+colnames_FGH <- c(colname_F, colname_G, colname_H)
+
+
+data <- generate_data(n=n, n_F_attr=n_F_attr, n_G_attr=n_G_attr, n_H_attr=n_H_attr)
 
 y <- data$y
 D <- data$D
+F <- data$F
 G <- data$G
 H <- data$H
 
 
 # Regression results
-lm(y ~ D + G + H)
-lm(y ~ D + H)
+lm(y ~ D + F + G + H)
+#lm(y ~ D + G + H)
+#lm(y ~ D + H)
 lm(y ~ D)
 
-lm(D ~ G + H)
+lm(D ~ F + G + H)
+#lm(D ~ G + H)
 lm(D ~ G)
 
 
-beta_hat <- least_squares_estimator(y=y, X=cbind(D, G, H))
-beta_hat <- least_squares_estimator(y=y, X=cbind(D, H))
-beta_hat <- least_squares_estimator(y=y, X=D)
+#beta_hat <- least_squares_estimator(y=y, X=cbind(D, F, G, H))
+#beta_hat <- least_squares_estimator(y=y, X=cbind(D, G, H))
+#beta_hat <- least_squares_estimator(y=y, X=cbind(D, F, H))
+#beta_hat <- least_squares_estimator(y=y, X=cbind(D, H))
+#beta_hat <- least_squares_estimator(y=y, X=D)
 
 
 
@@ -175,14 +207,17 @@ beta_hat <- least_squares_estimator(y=y, X=D)
 
 
 # Data
-data_train <- generate_data(n=n, n_G_attr=n_G_attr, n_H_attr=n_H_attr)
+data_train <- generate_data(n=n, n_F_attr=n_F_attr, n_G_attr=n_G_attr, n_H_attr=n_H_attr)
 
 y_train <- data_train$y
 D_train <- data_train$D
+F_train <- data_train$F
 G_train <- data_train$G
 H_train <- data_train$H
 
-X_train <- cbind(D_train, G_train, H_train)
+X_train <- cbind(D_train, F_train, G_train, H_train)
+#X_train <- cbind(D_train, G_train, H_train)
+
 
 
 # Double-selection method
@@ -214,7 +249,8 @@ selected_covars_one <- coef(lasso_one_cv, s="lambda.min")[-1]
 column_indicator_covars_one <- seq(from=1, to=length(selected_covars_one), by=1)
 column_indicator_covars_one <- t(cbind(column_indicator_covars_one))
 # Name covariates.
-names(column_indicator_covars_one) <- colnames_DGH
+#names(column_indicator_covars_one) <- colnames_DGH
+names(column_indicator_covars_one) <- colnames_DFGH
 # Keep indicators of selected covariates.
 column_indicator_covars_one[selected_covars_one==0] <- NaN
 column_indicator_covars_one <- column_indicator_covars_one[!is.na(column_indicator_covars_one)]
@@ -235,14 +271,15 @@ X_train_select_one <- X_train[1:n, column_indicator_covars_one]
 #lasso_two <- glmnet(G_train, D_train, alpha=1, family="binomial", intercept=FALSE)
 #lasso_two_cv <- cv.glmnet(G_train, D_train, alpha=1, family="binomial", type.measure="class", intercept=FALSE)
 GH_train <- cbind(G_train, H_train)
+FGH_train <- cbind(F_train, G_train, H_train)
 
-lasso_two <- glmnet(G_train, D_train, alpha=1, lambda=lambda_grid, intercept=FALSE)
-lasso_two <- glmnet(GH_train, D_train, alpha=1, lambda=lambda_grid, intercept=FALSE)
+# Train lasso model
+#lasso_two <- glmnet(GH_train, D_train, alpha=1, lambda=lambda_grid, intercept=FALSE)
+lasso_two <- glmnet(FGH_train, D_train, alpha=1, lambda=lambda_grid, intercept=FALSE)
 
 # Extract estimates from lasso model
-#beta_hats_lasso_two <- t(matrix(coef(lasso_two, s=lambda_grid)[-1,], nrow=dim(G_train)[2], ncol=length(lambda_grid)))
-beta_hats_lasso_two <- t(matrix(coef(lasso_two, s=lambda_grid)[-1,], nrow=dim(GH_train)[2], ncol=length(lambda_grid)))
-
+#beta_hats_lasso_two <- t(matrix(coef(lasso_two, s=lambda_grid)[-1,], nrow=dim(GH_train)[2], ncol=length(lambda_grid)))
+beta_hats_lasso_two <- t(matrix(coef(lasso_two, s=lambda_grid)[-1,], nrow=dim(FGH_train)[2], ncol=length(lambda_grid)))
 
 
 
@@ -264,6 +301,10 @@ lasso_coef_shrink_plot <- function(df) {
       plot <- plot +
               geom_line(aes_string(y=name), size=1, col="#43f7d0")
     }
+    else if (startsWith(name, "F")) {
+      plot <- plot +
+              geom_line(aes_string(y=name), size=1, col="#a89932", alpha=random_transparency)
+    }
     else if (startsWith(name, "G")) {
       plot <- plot +
               geom_line(aes_string(y=name), size=1, col="#f74376", alpha=random_transparency)
@@ -283,7 +324,8 @@ lasso_coef_shrink_plot <- function(df) {
 
 # 1.
 df <- data.frame(cbind(beta_hats_lasso_one, lambda_grid))
-names(df) <- colnames_DGH
+#names(df) <- colnames_DGH
+names(df) <- colnames_DFGH
 #TODO Drop treatment for visualization purposes
 #df <- subset(df, select=-c(D))
 
@@ -292,8 +334,8 @@ lasso_coef_shrink_plot(df=df)
 
 # 2.
 df <- data.frame(cbind(beta_hats_lasso_two, lambda_grid))
-names(df) <- colnames_GH
-#names(df) <- colnames_DG
+#names(df) <- colnames_GH
+names(df) <- colnames_FGH
 #TODO Drop treatment for visualization purposes
 #df <- subset(df, select=-c(D))
 

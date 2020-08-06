@@ -1,0 +1,43 @@
+\documentclass[10pt]{article}
+
+
+\usepackage{lscape}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
+\tikzset{>={Latex[width=2mm,length=2mm]}}
+
+\begin{document}
+
+%\begin{landscape}
+
+
+\begin{tikzpicture}[scale=2,font=\footnotesize]
+\tikzstyle{s}=[circle,draw,inner sep=2,fill=black]
+\tikzstyle{h}=[circle,draw, inner sep=2]
+
+
+
+% Graph 3
+% DGP with sparseness and additional predictors for D
+\node [s, label=above:$D$] (d) at (2,2){};
+\node [s, label=above:$H$] (h) at (4.5,3){};
+\node [s, label=above:$H'$] (h_) at (5.25,3.15){};
+\node [s, label=right:$Y$] (y) at (6,2){};
+\node [s, label=above:$G$] (g) at (3,1){};
+\node [s, label=left:$O$] (o) at (1.5,.75){};
+\node [s, label=above:$G'$] (g_) at (3.75,0.75){};
+\draw [->] (h) edge (y);
+\draw [->] (d) edge (y);
+\draw [->] (g) edge (d);
+\draw [->] (o) edge (d);
+\draw [->] (g) edge (y);
+\draw [dashed] (h) to [out=40,in=160] (h_);
+\draw [dashed] (g) to [out=-40,in=-160] (g_);
+
+
+
+
+\end{tikzpicture}
+%\end{landscape}
+
+\end{document}

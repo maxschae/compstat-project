@@ -1,0 +1,29 @@
+\documentclass[10pt]{article}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
+\tikzset{>={Latex[width=2mm,length=2mm]}}
+
+\begin{document}
+
+\begin{tikzpicture}[scale=2,font=\footnotesize]
+\tikzstyle{s}=[circle,draw,inner sep=2,fill=black]
+\tikzstyle{h}=[circle,draw, inner sep=2]
+
+
+% Graph 1
+% Basic DGP
+\node [s, label=above:$D$] (d) at (2,2){};
+\node [s, label=above:$H$] (h) at (4.5,3){};
+\node [s, label=right:$Y$] (y) at (6,2){};
+\node [s, label=above:$G$] (g) at (3,1){};
+\draw [->] (h) edge (y);
+\draw [->] (d) edge (y);
+\draw [->] (g) edge (d);
+\draw [->] (g) edge (y);
+
+
+
+
+\end{tikzpicture}
+\end{document}
