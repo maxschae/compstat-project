@@ -26,11 +26,12 @@ source("C:/Users/Max/Desktop/MASTER/computational_statistics/compstat-project/co
 set.seed(1234)
 
 
-n <- 200
-n_F_attr <- 10
-n_G_attr <- 20
-n_H_attr <- 30
-
+n <- 400
+n_F_attr <- 70
+n_G_attr <- 70
+n_H_attr <- 72
+treatment_effect <- -1
+unconfoundedness_rate <- .5
 
 # Housekeeping of feature names and identifiers for identification.
 # Create vector with covariate names.
@@ -41,12 +42,14 @@ colname_H <- str_c(rep("H_", n_H_attr), seq(from=1, to=n_H_attr, by=1))
 # Required for first selection step
 colnames_DGH <- c("D", colname_G, colname_H)
 colnames_DFGH <- c("D", colname_F, colname_G, colname_H)
+colnames_dataset <- c("y", "D", colname_F, colname_G, colname_H)
 
 # Required for second selection step
 colnames_GH <- c(colname_G, colname_H)
 colnames_FGH <- c(colname_F, colname_G, colname_H)
 
-covariate_identifier <- seq(from=1, to=(n_F_attr+n_G_attr+n_H_attr), by=1)
+colnumbers_GH <- seq(from=1, to=(n_G_attr+n_H_attr), by=1)
+colnumbers_FGH <- seq(from=1, to=(n_F_attr+n_G_attr+n_H_attr), by=1)
 
 
 
@@ -60,12 +63,21 @@ double_select_covariates <- function(data_train) {
 
   y_train <- data_train$y
   D_train <- data_train$D
+  F_train <- data_train[colname_F]
+  G_train <- data_train[colname_G]
+  H_train <- data_train[colname_H]
+
 
   # Assemble different regressor matrices
-  X_train <- cbind(data_train$D, data_train$F, data_train$G, data_train$H)
-  #X_train <- cbind(data_train$D, data_train$G, data_train$H)
-  GH_train <- cbind(data_train$G, data_train$H)
-  FGH_train <- cbind(data_train$F, data_train$G, data_train$H)
+  # Case with F_
+  X_train <- data.matrix(cbind(D_train, F_train, G_train, H_train))
+  Z_train <- data.matrix(cbind(F_train, G_train, H_train))
+  # Case without F_
+  X_train <- data.matrix(cbind(D_train, G_train, H_train))
+  Z_train <- data.matrix(cbind(G_train, H_train))
+
+  #GH_train <- data.matrix(cbind(G_train, H_train))
+  #FGH_train <- data.matrix(cbind(F_train, G_train, H_train))
 
 
   # Double-selection method
@@ -81,8 +93,8 @@ double_select_covariates <- function(data_train) {
   selected_covars_one <- seq(from=1, to=length(lasso_coefs_one), by=1)
   selected_covars_one <- t(cbind(selected_covars_one))
   # Name covariates.
-  #names(selected_covars_one) <- colnames_GH
-  names(selected_covars_one) <- colnames_FGH
+  names(selected_covars_one) <- colnames_GH
+  #names(selected_covars_one) <- colnames_FGH
   # Keep indicators of selected covariates.
   selected_covars_one[lasso_coefs_one==0] <- NaN
   #selected_covars_one <- selected_covars_one[!is.na(selected_covars_one)]
@@ -90,7 +102,7 @@ double_select_covariates <- function(data_train) {
 
 
   # 2. Use Lasso to select covariates given their association with tratment D
-  lasso_two_cv <- cv.glmnet(FGH_train, D_train, alpha=1, intercept=FALSE,
+  lasso_two_cv <- cv.glmnet(Z_train, D_train, alpha=1, intercept=FALSE,
                             type.measure="mse", nfolds=10)
   lasso_coefs_two <- cbind(coef(lasso_two_cv, s="lambda.min")[-1])
 
@@ -98,78 +110,173 @@ double_select_covariates <- function(data_train) {
   selected_covars_two <- seq(from=1, to=length(lasso_coefs_two), by=1)
   selected_covars_two <- t(cbind(selected_covars_two))
   # Name covariates
-  #names(selected_covars_two) <- colnames_GH
-  names(selected_covars_two) <- colnames_FGH
+  names(selected_covars_two) <- colnames_GH
+  #names(selected_covars_two) <- colnames_FGH
   # Keep indicators of selected covariates.
   selected_covars_two[lasso_coefs_two==0] <- NaN
   #selected_covars_two <- selected_covars_two[!is.na(selected_covars_two)]
 
-  #return(list(selection_one=lasso_coefs_one, selection_two=lasso_coefs_two))
-  return(list(selection_one=selected_covars_one, selection_two=selected_covars_two))
-}
 
+  # Exclude covariates only if both lasso_one and lasso_two suggest it
+  double_selected_identifier <- rbind(selected_covars_one,
+                                      selected_covars_two,
+                                      colnumbers_GH)
+                                      #colnumbers_FGH
+
+  double_selected_identifier[3, colSums(is.na(double_selected_identifier)) == 2] <- NaN
+  double_selected_identifier <- double_selected_identifier[3, ]
+
+  return(double_selected_identifier)
+}
 
 
 ###
+
+compute_confounder_bias <- function(n, n_F_attr, n_G_attr, n_H_attr, treatment_effect,
+                                    unconfoundedness_rate) {
+
+
+  # Draw data once and split into train and test (*)
+  data_set <- generate_data(n=n,
+                        n_F_attr=n_F_attr,
+                        n_G_attr=n_G_attr,
+                        n_H_attr=n_H_attr,
+                        treatment_effect=treatment_effect,
+                        unconfoundedness_rate=unconfoundedness_rate)
+
+  data <- data_set$data
+
+  # Split data into training and test sets
+  data_train <- data[1:(dim(data)[1]/2), ]
+  data_test <- data[(dim(data)[1]/2+1):dim(data)[1], ]
+
+  true_covariate_identifier <- data_train$true_covariate_identifier
+
+  # Select covariates according to the double-selection method
+  double_selected_identifier <- double_select_covariates(data_train=data_train)
+
+  covariate_identifier <- data.frame(rbind(true_covariate_identifier,
+                                           double_selected_identifier))
+
+  #names(covariate_identifier) <- colnames_FGH
+  names(covariate_identifier) <- colnames_GH
+
+  #covariate_identifier_F <- covariate_identifier[colname_F] #TODO F_
+  covariate_identifier_G <- covariate_identifier[colname_G]
+  covariate_identifier_H <- covariate_identifier[colname_H]
+
+
+
+  #TODO check whether treatment was also dropped?
+
+  # Be informed whether variabels were falsely dropped
+  #TODO False positive and false negative
+  #misexcl_F_rate <- sum(is.na(covariate_identifier_F[1,] != covariate_identifier_F[2,])) / n_F_attr
+  misexcl_G_rate <- sum(is.na(covariate_identifier_G[1,] != covariate_identifier_G[2,])) / n_G_attr
+  misexcl_H_rate <- sum(is.na(covariate_identifier_H[1,] != covariate_identifier_H[2,])) / n_H_attr
+
+  # Set in context to sparsity rates
+  #misexcl_F_rate <- sum(is.na(covariate_identifier_F[1,] != covariate_identifier_F[2,])) / n_F_attr / sparsity_rate_F
+  #misexcl_G_rate <- sum(is.na(covariate_identifier_G[1,] != covariate_identifier_G[2,])) / n_G_attr / sparsity_rate_GDY
+  #misexcl_H_rate <- sum(is.na(covariate_identifier_H[1,] != covariate_identifier_H[2,])) / n_H_attr / sparsity_rate_H
+
+
+  # Compute metrics of interest (see below) with test data.
+  y_test <- data_test$y
+  D_test <- data_test$D
+  F_test <- data_test[colname_F]
+  G_test <- data_test[colname_G]
+  H_test <- data_test[colname_H]
+
+  # Assemble different regressor matrices
+  #X_test <- data.matrix(cbind(D_test, F_test, G_test, H_test))
+  X_test <- data.matrix(cbind(D_test, G_test, H_test))
+  Z_test <- data.matrix(cbind(G_test, H_test))
+  #Z_test <- data.matrix(cbind(F_test, G_test, H_test))
+
+  Z_test_selected <- Z_test[, double_selected_identifier[!is.na(double_selected_identifier)]]
+  X_test_selected <- data.matrix(cbind(D_test, Z_test_selected))
+
+  # Estimate treatment effect by standard OLS provided with double-selected covariates
+  lm_result <- lm(y_test ~ X_test_selected)
+  # Collect metrics of interest
+  confounder_bias <- lm_result$coefficients[2] - treatment_effect
+  test_MSE <- (1/length(lm_result$residuals)) * sum((lm_result$residuals)**2)
+
+  return(list(confounder_bias=confounder_bias, test_MSE=test_MSE))
+  # (*) Since variables (within a class like G or H) are
+  # excluded from the true model at random, drawing *one* dataset which
+  # is then split into train and test data ensures that the true association
+  # of variables is equal across train and test data.
+  # E.g. if train and test data are drawn sequentially, "G_1" might be
+  # associated in the train but not in the test data, and dropping it from test
+  # is fine whereas dropping it in train is not. But then we would
+  # reason that "G_1" was falsely dropped albeit it was not. This
+  # would also mess up any metric such as the MSE etc.
+}
+
+
+# Main : run simulation
 R <- 20
 
 
-for (r in 1:R) {
+sim_results_vec <- replicate(R, compute_confounder_bias(n=n,
+                                       n_F_attr=n_F_attr,
+                                       n_G_attr=n_G_attr,
+                                       n_H_attr=n_H_attr,
+                                       treatment_effect=treatment_effect,
+                                       unconfoundedness_rate=unconfoundedness_rate))
 
-  # Draw training data
-  data_train <- generate_data(n=n, n_F_attr=n_F_attr, n_G_attr=n_G_attr, n_H_attr=n_H_attr)
+confounder_bias_vec <- unlist(sim_results_vec[1, 1:R])
+test_MSE_vec <- unlist(sim_results_vec[2, 1:R])
 
-  # Select covariates according to the double-selection method
-  selected_covars <- double_select_covariates(data_train=data_train)
-  # Exclude covariates only if both lasso_one and lasso_two suggest it
-  double_selected_covars <- rbind(selected_covars$selection_one,
-                                  selected_covars$selection_two,
-                                  covariate_identifier)
+# Evaluate
+cat("Mean test MSE is", mean(test_MSE_vec))
+cat("Median confounder bias is", median(confounder_bias_vec))
 
-  double_selected_covars <- double_selected_covars[ , colSums(is.na(double_selected_covars)) < 2]
-  double_selected_covars <- double_selected_covars[3, ]
-
-
-  # Draw test data and exclude covariates that were dropped by the double-selection method
-  data_test <- generate_data(n=n, n_F_attr=n_F_attr, n_G_attr=n_G_attr, n_H_attr=n_H_attr)
-
-  y_test <- data_test$y
-  D_test <- data_test$D
-
-  # Assemble different regressor matrices
-  X_test <- cbind(D_test, data_test$F, data_test$G, data_test$H)
-  #X_test <- cbind(D_test, G_test, H_test)
-  GH_test <- cbind(data_test$G, data_test$H)
-  FGH_test <- cbind(data_test$F, data_test$G, data_test$H)
+hist(confounder_bias_vec)
 
 
 
-  #TODO evaluate by some metric ... number of falsely dropped covariates
+
+# Simulations
+# Vary over
+unconfoundedness_rate_vec <- seq(from=0, to=1, by=.1)
+
+# Initialize containers
+confounder_bias_mat <- matrix(NA, nrow=length(unconfoundedness_rate_vec), ncol=R)
+mean_test_MSE_vec <- rep(NA, R)
+i <- 1
+
+for (unconfoundedness_rate in unconfoundedness_rate_vec) {
+
+  sim_results_vec <- replicate(R, compute_confounder_bias(n=n,
+                                         n_F_attr=n_F_attr,
+                                         n_G_attr=n_G_attr,
+                                         n_H_attr=n_H_attr,
+                                         treatment_effect=treatment_effect,
+                                         unconfoundedness_rate=unconfoundedness_rate))
+
+  confounder_bias_mat[i, ] <- unlist(sim_results_vec[1, 1:R])
+  mean_test_MSE_vec[i] <- mean(unlist(sim_results_vec[2, 1:R]))
 
 
-  FGH_test_final <- FGH_test[1:n, double_selected_covars]
-  X_test_final <- cbind(D_test, FGH_test_final)
-
-
-
-  #TODO evaluate by some metric ... bias of D_coef (causality), MSE (prediction)
-  lm_result <- lm(y_test ~ X_test_final)
+  i <- i+1
 
 }
 
 
-# Collect lasso beta_estimates
-#df_selected_covars_one[r, ] <- selected_covars$selection_one
-#df_selected_covars_two[r, ] <- selected_covars$selection_two
-
-# OLS with union of X_select_one and X_select_two
+# Evaluation
 
 
-#TODO #TODO #TODO #TODO #TODO
-# Perhaps, draw dataset and then split into training and test.
-# Why? Since otherwise G7 which was dropped based on its association
-# in this particular draw, may not be droppable next draw (test_draw)
-# or am I missing the whole point about train and test split
+
+#TODO do this with replicate function, R times. then: loop / vectorize over it by
+# iterating over treatment_effect or numbers of attributes or unconfoundedness rate / intensity etc.
+# this forms the key simulation study ---
+# loop or vectorize function w.r.t. what should be varied.
+
+
+
 
 
 
@@ -177,7 +284,7 @@ for (r in 1:R) {
 
 # 2. Use Lasso to select covariates given their association with treatment D
 #TODO cannot use logistic model then?? or use extension of lasso with logit...
-# type.measure class gives misclassification error
+# type.measure class gives misclassification error for cv
 #lasso_two_cv <- cv.glmnet(G_train, D_train, alpha=1, family="binomial", type.measure="class", intercept=FALSE)
 
 
@@ -249,16 +356,28 @@ lasso_coef_shrink_plot <- function(df) {
 #TODO Do this for multiple runs... quite tricky since its 3-dimensions
 # i.e. lambdas, coefs and simulation runs span three dimensions
 
+data_set <- generate_data(n=n,
+                          n_F_attr=n_F_attr,
+                          n_G_attr=n_G_attr,
+                          n_H_attr=n_H_attr,
+                          treatment_effect=treatment_effect)
+
+data <- data_set$data
+data_train <- data[1:dim(data)[1]/2, ]
 
 # Draw training data
 y_train <- data_train$y
 D_train <- data_train$D
+F_train <- data_train[colname_F]
+G_train <- data_train[colname_G]
+H_train <- data_train[colname_H]
+
 
 # Assemble different regressor matrices
-X_train <- cbind(data_train$D, data_train$F, data_train$G, data_train$H)
-#X_train <- cbind(data_train$D, data_train$G, data_train$H)
-GH_train <- cbind(data_train$G, data_train$H)
-FGH_train <- cbind(data_train$F, data_train$G, data_train$H)
+#X_train <- data.matrix(cbind(D_train, F_train, G_train, H_train))
+X_train <- data.matrix(cbind(D_train, G_train, H_train))
+Z_train <- data.matrix(cbind(G_train, H_train))
+#Z_train <- data.matrix(cbind(F_train, G_train, H_train))
 
 
 
@@ -269,18 +388,18 @@ lambda_grid <- seq(0, 2, by=.025)
 lasso_one <- glmnet(X_train, y_train, alpha=1, lambda=lambda_grid, intercept=FALSE)
 # 2. Use Lasso to shrink/select covariates given their association with tratment D
 #lasso_two <- glmnet(GH_train, D_train, alpha=1, lambda=lambda_grid, intercept=FALSE)
-lasso_two <- glmnet(FGH_train, D_train, alpha=1, lambda=lambda_grid, intercept=FALSE)
+lasso_two <- glmnet(Z_train, D_train, alpha=1, lambda=lambda_grid, intercept=FALSE)
 
 # Extract estimates from both models
 beta_hats_lasso_one <- t(matrix(coef(lasso_one, s=lambda_grid)[-1,], nrow=dim(X_train)[2], ncol=length(lambda_grid)))
-beta_hats_lasso_two <- t(matrix(coef(lasso_two, s=lambda_grid)[-1,], nrow=dim(FGH_train)[2], ncol=length(lambda_grid)))
+beta_hats_lasso_two <- t(matrix(coef(lasso_two, s=lambda_grid)[-1,], nrow=dim(Z_train)[2], ncol=length(lambda_grid)))
 
 
 
 # 1.
 df <- data.frame(cbind(beta_hats_lasso_one, lambda_grid))
-#names(df) <- colnames_DGH
-names(df) <- colnames_DFGH
+names(df) <- colnames_DGH
+#names(df) <- colnames_DFGH
 #TODO Drop treatment for visualization purposes
 #df <- subset(df, select=-c(D))
 
@@ -289,8 +408,8 @@ lasso_coef_shrink_plot(df=df)
 
 # 2.
 df <- data.frame(cbind(beta_hats_lasso_two, lambda_grid))
-#names(df) <- colnames_GH
-names(df) <- colnames_FGH
+names(df) <- colnames_GH
+#names(df) <- colnames_FGH
 #TODO Drop treatment for visualization purposes
 #df <- subset(df, select=-c(D))
 
@@ -313,28 +432,30 @@ lasso_coef_shrink_plot(df=df)
 
 # >>>
 # Quick look
-data <- generate_data(n=n, n_F_attr=n_F_attr, n_G_attr=n_G_attr, n_H_attr=n_H_attr)
-y <- data$y
-D <- data$D
-F <- data$F
-G <- data$G
-H <- data$H
+#y_train <- data_train$y
+#D_train <- data_train$D
+#F_train <- data_train[colname_F]
+#G_train <- data_train[colname_G]
+#H_train <- data_train[colname_H]
+
+
+# Assemble different regressor matrices
+#X_train <- data.matrix(cbind(D_train, F_train, G_train, H_train))
+#X_train <- data.matrix(cbind(D_train, G_train, H_train))
+#GH_train <- data.matrix(cbind(G_train, H_train))
+#FGH_train <- data.matrix(cbind(F_train, G_train, H_train))
 
 # Regression results
-lm(y ~ D + F + G + H)
-#lm(y ~ D + G + H)
-#lm(y ~ D + H)
-lm(y ~ D)
+#lm(y_train ~ D_train + F_train + G_train + H_train)
+#lm(y_train ~ D_train + G_train + H_train)
+#lm(y_train ~ D_train + H_train)
+#lm(y_train ~ D_train)
 
-lm(D ~ F + G + H)
-#lm(D ~ G + H)
-lm(D ~ G)
+#lm(D_train ~ F_train + G_train + H_train)
+#lm(D_train ~ G_train + H_train)
+#lm(D_train ~ G_train)
 
-#beta_hat <- least_squares_estimator(y=y, X=cbind(D, F, G, H))
-#beta_hat <- least_squares_estimator(y=y, X=cbind(D, G, H))
-#beta_hat <- least_squares_estimator(y=y, X=cbind(D, F, H))
-#beta_hat <- least_squares_estimator(y=y, X=cbind(D, H))
-#beta_hat <- least_squares_estimator(y=y, X=D)
+#beta_hat <- least_squares_estimator(y=y_train, X=X_train)
 # <<<
 
 
