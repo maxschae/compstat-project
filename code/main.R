@@ -28,8 +28,8 @@ set.seed(1234)
 
 n <- 400
 n_F_attr <- 70
-n_G_attr <- 70
-n_H_attr <- 72
+n_G_attr <- 90
+n_H_attr <- 90
 treatment_effect <- -1
 unconfoundedness_rate <- .5
 
@@ -56,8 +56,47 @@ colnumbers_FGH <- seq(from=1, to=(n_F_attr+n_G_attr+n_H_attr), by=1)
 
 ### Double-selection method
 
-###TODO write into loop ; or use 'replicate' to make vectorized operation
-#, the latter seems not too obvious ...
+simple_select_covariates <- function(data_train) {
+
+
+  y_train <- data_train$y
+  D_train <- data_train$D
+  F_train <- data_train[colname_F]
+  G_train <- data_train[colname_G]
+  H_train <- data_train[colname_H]
+
+
+  # Assemble different regressor matrices
+  # Case with F_
+  X_train <- data.matrix(cbind(D_train, F_train, G_train, H_train))
+  Z_train <- data.matrix(cbind(F_train, G_train, H_train))
+  # Case without F_
+  X_train <- data.matrix(cbind(D_train, G_train, H_train))
+  Z_train <- data.matrix(cbind(G_train, H_train))
+
+  # Simple selection method
+  # Off-the-shelve MSE-optimal Lasso; outcome regressed on entire feature matrix
+
+  # Use Lasso to select covariates given their association with outcome Y
+  lasso_one_cv <- cv.glmnet(X_train, y_train, alpha=1, intercept=FALSE,
+                            type.measure="mse", nfolds=10)
+  lasso_coefs_one <- cbind(coef(lasso_one_cv, s="lambda.min")[-1])
+  # Exclude coef. of treatment since we are interested in selecting covariates
+  lasso_coefs_one <- lasso_coefs_one[2:dim(X_train)[2], ]
+
+  # Create vector that indicates selected covariates by lasso_one_cv
+  selected_covars_one <- seq(from=1, to=length(lasso_coefs_one), by=1)
+  selected_covars_one <- rbind(selected_covars_one)
+  # Name covariates.
+  names(selected_covars_one) <- colnames_GH
+  #names(selected_covars_one) <- colnames_FGH
+  # Keep indicators of selected covariates.
+  selected_covars_one[lasso_coefs_one==0] <- NaN
+
+  return(selected_covars_one)
+}
+
+
 
 double_select_covariates <- function(data_train) {
 
@@ -83,23 +122,7 @@ double_select_covariates <- function(data_train) {
   # Double-selection method
 
   # 1. Use Lasso to select covariates given their association with outcome Y
-  lasso_one_cv <- cv.glmnet(X_train, y_train, alpha=1, intercept=FALSE,
-                            type.measure="mse", nfolds=10)
-  lasso_coefs_one <- cbind(coef(lasso_one_cv, s="lambda.min")[-1])
-  # Exclude coef. of treatment since we are interested in selecting covariates
-  lasso_coefs_one <- lasso_coefs_one[2:dim(X_train)[2], ]
-
-  # Create vector that indicates selected covariates by lasso_one_cv
-  selected_covars_one <- seq(from=1, to=length(lasso_coefs_one), by=1)
-  selected_covars_one <- t(cbind(selected_covars_one))
-  # Name covariates.
-  names(selected_covars_one) <- colnames_GH
-  #names(selected_covars_one) <- colnames_FGH
-  # Keep indicators of selected covariates.
-  selected_covars_one[lasso_coefs_one==0] <- NaN
-  #selected_covars_one <- selected_covars_one[!is.na(selected_covars_one)]
-
-
+  selected_covars_one <- simple_select_covariates(data_train=data_train)
 
   # 2. Use Lasso to select covariates given their association with tratment D
   lasso_two_cv <- cv.glmnet(Z_train, D_train, alpha=1, intercept=FALSE,
@@ -150,12 +173,16 @@ compute_confounder_bias <- function(n, n_F_attr, n_G_attr, n_H_attr, treatment_e
   data_train <- data[1:(dim(data)[1]/2), ]
   data_test <- data[(dim(data)[1]/2+1):dim(data)[1], ]
 
-  true_covariate_identifier <- data_train$true_covariate_identifier
+  true_covariate_identifier <- data_set$true_covariate_identifier
 
+  # *Selection section*
   # Select covariates according to the double-selection method
+  simple_selected_identifier <- simple_select_covariates(data_train=data_train)
   double_selected_identifier <- double_select_covariates(data_train=data_train)
 
+
   covariate_identifier <- data.frame(rbind(true_covariate_identifier,
+                                           simple_selected_identifier,
                                            double_selected_identifier))
 
   #names(covariate_identifier) <- colnames_FGH
@@ -172,8 +199,25 @@ compute_confounder_bias <- function(n, n_F_attr, n_G_attr, n_H_attr, treatment_e
   # Be informed whether variabels were falsely dropped
   #TODO False positive and false negative
   #misexcl_F_rate <- sum(is.na(covariate_identifier_F[1,] != covariate_identifier_F[2,])) / n_F_attr
-  misexcl_G_rate <- sum(is.na(covariate_identifier_G[1,] != covariate_identifier_G[2,])) / n_G_attr
-  misexcl_H_rate <- sum(is.na(covariate_identifier_H[1,] != covariate_identifier_H[2,])) / n_H_attr
+  misexcl_G_rate_simple <- sum(is.na(covariate_identifier_G[1,] != covariate_identifier_G[2,])) / n_G_attr
+  misexcl_H_rate_simple <- sum(is.na(covariate_identifier_H[1,] != covariate_identifier_H[2,])) / n_H_attr
+
+  misexcl_G_rate_double <- sum(is.na(covariate_identifier_G[1,] != covariate_identifier_G[3,])) / n_G_attr
+  misexcl_H_rate_double <- sum(is.na(covariate_identifier_H[1,] != covariate_identifier_H[3,])) / n_H_attr
+  #TODO check this
+
+  # The setup here is labeled as follows:
+  # . 'positive' refers to state where covariate has a zero effect.
+  # . 'negative' refers to state where covariate has a non-zero effect.
+  # Thus, true-positive refers to state where covariate has a zero effect
+  # and the selection methods excludes covariate.
+  # True-negative refers to state where covariate has a non-zero effect
+  # and the selection method does not exclude covariate.
+  # False-positive : covariate has a zero effect and is not excluded.
+  # False-negative : covariate has non-zero effect and is not excluded.
+
+  tp_rate_G <- 1
+
 
   # Set in context to sparsity rates
   #misexcl_F_rate <- sum(is.na(covariate_identifier_F[1,] != covariate_identifier_F[2,])) / n_F_attr / sparsity_rate_F
@@ -194,7 +238,9 @@ compute_confounder_bias <- function(n, n_F_attr, n_G_attr, n_H_attr, treatment_e
   Z_test <- data.matrix(cbind(G_test, H_test))
   #Z_test <- data.matrix(cbind(F_test, G_test, H_test))
 
-  Z_test_selected <- Z_test[, double_selected_identifier[!is.na(double_selected_identifier)]]
+  #Z_test_selected <- Z_test[, double_selected_identifier[!is.na(double_selected_identifier)]]
+  Z_test_selected <- Z_test[, simple_selected_identifier[!is.na(simple_selected_identifier)]]
+
   X_test_selected <- data.matrix(cbind(D_test, Z_test_selected))
 
   # Estimate treatment effect by standard OLS provided with double-selected covariates
@@ -203,7 +249,10 @@ compute_confounder_bias <- function(n, n_F_attr, n_G_attr, n_H_attr, treatment_e
   confounder_bias <- lm_result$coefficients[2] - treatment_effect
   test_MSE <- (1/length(lm_result$residuals)) * sum((lm_result$residuals)**2)
 
-  return(list(confounder_bias=confounder_bias, test_MSE=test_MSE))
+  return(list(confounder_bias=confounder_bias,
+              test_MSE=test_MSE,
+              misexcl_G_rate_simple=misexcl_G_rate_simple,
+              misexcl_H_rate_simple=misexcl_H_rate_simple))
   # (*) Since variables (within a class like G or H) are
   # excluded from the true model at random, drawing *one* dataset which
   # is then split into train and test data ensures that the true association
@@ -229,6 +278,10 @@ sim_results_vec <- replicate(R, compute_confounder_bias(n=n,
 
 confounder_bias_vec <- unlist(sim_results_vec[1, 1:R])
 test_MSE_vec <- unlist(sim_results_vec[2, 1:R])
+misexcl_G_rates <- unlist(sim_results_vec[3, 1:R])
+misexcl_H_rates <- unlist(sim_results_vec[4, 1:R])
+
+
 
 # Evaluate
 cat("Mean test MSE is", mean(test_MSE_vec))
@@ -246,6 +299,9 @@ unconfoundedness_rate_vec <- seq(from=0, to=1, by=.1)
 # Initialize containers
 confounder_bias_mat <- matrix(NA, nrow=length(unconfoundedness_rate_vec), ncol=R)
 mean_test_MSE_vec <- rep(NA, R)
+mean_misexcl_G_rate_simple <- rep(NA, R)
+mean_misexcl_H_rate_simple <- rep(NA, R)
+
 i <- 1
 
 for (unconfoundedness_rate in unconfoundedness_rate_vec) {
@@ -259,10 +315,11 @@ for (unconfoundedness_rate in unconfoundedness_rate_vec) {
 
   confounder_bias_mat[i, ] <- unlist(sim_results_vec[1, 1:R])
   mean_test_MSE_vec[i] <- mean(unlist(sim_results_vec[2, 1:R]))
+  mean_misexcl_G_rate_simple[i] <- mean(unlist(sim_results_vec[3, 1:R]))
+  mean_misexcl_H_rate_simple[i] <- mean(unlist(sim_results_vec[4, 1:R]))
 
 
   i <- i+1
-
 }
 
 
@@ -360,7 +417,8 @@ data_set <- generate_data(n=n,
                           n_F_attr=n_F_attr,
                           n_G_attr=n_G_attr,
                           n_H_attr=n_H_attr,
-                          treatment_effect=treatment_effect)
+                          treatment_effect=treatment_effect,
+                          unconfoundedness_rate=unconfoundedness_rate)
 
 data <- data_set$data
 data_train <- data[1:dim(data)[1]/2, ]
@@ -432,24 +490,33 @@ lasso_coef_shrink_plot(df=df)
 
 # >>>
 # Quick look
-#y_train <- data_train$y
-#D_train <- data_train$D
-#F_train <- data_train[colname_F]
-#G_train <- data_train[colname_G]
-#H_train <- data_train[colname_H]
+
+data_set <- generate_data(n=n,
+                          n_F_attr=n_F_attr,
+                          n_G_attr=n_G_attr,
+                          n_H_attr=n_H_attr,
+                          treatment_effect=treatment_effect,
+                          unconfoundedness_rate=unconfoundedness_rate)
+
+data_train <- data_set$data
+y_train <- data_train$y
+D_train <- data_train$D
+F_train <- data.matrix(data_train[colname_F])
+G_train <- data.matrix(data_train[colname_G])
+H_train <- data.matrix(data_train[colname_H])
 
 
 # Assemble different regressor matrices
 #X_train <- data.matrix(cbind(D_train, F_train, G_train, H_train))
-#X_train <- data.matrix(cbind(D_train, G_train, H_train))
-#GH_train <- data.matrix(cbind(G_train, H_train))
-#FGH_train <- data.matrix(cbind(F_train, G_train, H_train))
+X_train <- data.matrix(cbind(D_train, G_train, H_train))
+Z_train <- data.matrix(cbind(G_train, H_train))
+#Z_train <- data.matrix(cbind(F_train, G_train, H_train))
 
 # Regression results
 #lm(y_train ~ D_train + F_train + G_train + H_train)
-#lm(y_train ~ D_train + G_train + H_train)
-#lm(y_train ~ D_train + H_train)
-#lm(y_train ~ D_train)
+lm(y_train ~ D_train + G_train + H_train)
+lm(y_train ~ D_train + H_train)
+lm(y_train ~ D_train)
 
 #lm(D_train ~ F_train + G_train + H_train)
 #lm(D_train ~ G_train + H_train)

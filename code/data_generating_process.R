@@ -69,7 +69,7 @@ generate_data <- function(n=200, n_F_attr, n_G_attr, n_H_attr, treatment_effect,
   # Data-generating process
 
   # Degree of sparseness in attributes explaining treatment only
-  sparsity_rate_F <- .75
+  sparsity_rate_F <- .5
   beta_F <- rep(0, dim(F)[2])
   zero_coefs_F <- sample(1:dim(F)[2], size=sparsity_rate_F*dim(F)[2])
   beta_F[zero_coefs_F] <- 0
@@ -82,16 +82,17 @@ generate_data <- function(n=200, n_F_attr, n_G_attr, n_H_attr, treatment_effect,
   sparsity_rate_GDY <- unconfoundedness_rate
   zero_coefs_GDY <- sample(1:dim(G)[2], size=sparsity_rate_GDY*dim(G)[2])
 
-  beta_GD <- rep(.25, dim(G)[2])
+  beta_GD <- rep(1, dim(G)[2])
   beta_GD[zero_coefs_GDY] <- 0
 
-  beta_GY <- rep(.25, dim(G)[2])
+  beta_GY <- rep(-1, dim(G)[2])
+  #beta_GY <- rep(.25, dim(G)[2])
   beta_GY[zero_coefs_GDY] <- 0
 
 
 
   # Degree of sparseness in housing attributes explaining house prices
-  sparsity_rate_H <- .75
+  sparsity_rate_H <- .5
   beta_H <- rep(1, dim(H)[2])
   zero_coefs_H <- sample(1:dim(H)[2], size=sparsity_rate_H*dim(H)[2])
   beta_H[zero_coefs_H] <- 0
@@ -106,6 +107,7 @@ generate_data <- function(n=200, n_F_attr, n_G_attr, n_H_attr, treatment_effect,
   sparsity_identifier_H[zero_coefs_H] <- 1
   sparsity_identifier <- append(sparsity_identifier_F, sparsity_identifier_G)
   sparsity_identifier <- append(sparsity_identifier, sparsity_identifier_H)
+  sparsity_identifier <- append(sparsity_identifier_G, sparsity_identifier_H) #TODO _F
   # Collect identifier for variables which are explaining either D or Y
   true_covariate_identifier <- seq(from=1, to=(n_F_attr+n_G_attr+n_H_attr), by=1)
   true_covariate_identifier[sparsity_identifier==0] <- NaN
