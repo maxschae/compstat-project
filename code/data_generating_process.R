@@ -5,6 +5,7 @@ library(mvtnorm)
 
 
 generate_data <- function(n=200, n_F_attr, n_G_attr, n_H_attr, treatment_effect,
+                          beta_GD_size=1, beta_GY_size=1, beta_H_size=1,
                           unconfoundedness_rate) {
 
 
@@ -16,6 +17,7 @@ generate_data <- function(n=200, n_F_attr, n_G_attr, n_H_attr, treatment_effect,
 
 
 
+  #TODO HEADS UP WITH F --- Collider bias incoming?
   # Draw features explaining treatment which are independent of outcome
   F <- replicate(n=n_F_attr, rnorm(n=n, mean=2, sd=1))
 
@@ -83,9 +85,11 @@ generate_data <- function(n=200, n_F_attr, n_G_attr, n_H_attr, treatment_effect,
   zero_coefs_GDY <- sample(1:dim(G)[2], size=sparsity_rate_GDY*dim(G)[2])
 
   beta_GD <- rep(1, dim(G)[2])
+  beta_GD <- rep(beta_GD_size, dim(G)[2])
   beta_GD[zero_coefs_GDY] <- 0
 
-  beta_GY <- rep(-1, dim(G)[2])
+  beta_GY <- rep(1, dim(G)[2])
+  beta_GY <- rep(beta_GY_size, dim(G)[2])
   #beta_GY <- rep(.25, dim(G)[2])
   beta_GY[zero_coefs_GDY] <- 0
 
@@ -110,10 +114,19 @@ generate_data <- function(n=200, n_F_attr, n_G_attr, n_H_attr, treatment_effect,
   sparsity_identifier <- append(sparsity_identifier_G, sparsity_identifier_H) #TODO _F
   # Collect identifier for variables which are explaining either D or Y
   true_covariate_identifier <- seq(from=1, to=(n_F_attr+n_G_attr+n_H_attr), by=1)
-  true_covariate_identifier[sparsity_identifier==0] <- NaN
+  true_covariate_identifier[sparsity_identifier==1] <- NaN
   true_covariate_identifier <- seq(from=1, to=(n_G_attr+n_H_attr), by=1)
-  true_covariate_identifier[sparsity_identifier==0] <- NaN
+  true_covariate_identifier[sparsity_identifier==1] <- NaN
 
+  # Check whether true model is high-dimensional
+  n_assoc_attr_X <- n_F_attr * (1 - sparsity_rate_F) + n_G_attr * (1 - sparsity_rate_GDY) + n_H_attr * (1 - sparsity_rate_H)
+  n_assoc_attr_Z <- n_F_attr * (1 - sparsity_rate_F) + n_G_attr * (1 - sparsity_rate_GDY)
+  if (n/2 < n_assoc_attr_X) {
+    print("Warning: true model is high-dimensional")
+  }
+  if (n/2 < n_assoc_attr_Z) {
+    print("Warning: true model is high-dimensional")
+  }
 
   # Treatment effect
   beta_DY <- treatment_effect
@@ -125,7 +138,7 @@ generate_data <- function(n=200, n_F_attr, n_G_attr, n_H_attr, treatment_effect,
   # Treatment
   # --- linear model
   D <- 0 + G %*% beta_GD + eps_D
-  D <- 0 + G %*% beta_GD + F %*% beta_F + eps_D
+  #D <- 0 + G %*% beta_GD + F %*% beta_F + eps_D
   # --- logistic model
   #proba_binom_model <- exp(0 + G %*% beta_GD + eps_D) / (1 + exp(0 + G %*% beta_GD + eps_D))
   #D <- cbind(rbinom(n=n, size=1, prob=proba_binom_model))
