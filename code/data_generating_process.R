@@ -2,7 +2,7 @@
 # Define the data-generating processes
 
 
-generate_data <- function(n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30, treatment_effect=.5,
+generate_data <- function(dgp=0, n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30, treatment_effect=.5,
                           beta_GD_size=.5, beta_GY_size=.25, beta_H_size=1, beta_F_size=1,
                           unconfoundedness_rate=.9) {
 
@@ -85,8 +85,8 @@ generate_data <- function(n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30, treatmen
   G <- rmvnorm(n=n, mean=rep(0, n_G_attr), sigma=sigma_G)
   #G <- replicate(n=n_G_attr, rnorm(n=n, mean=0, sd=.15))
 
-  # Standard-normal distribution
-  G <- rmvnorm(n=n, mean=rep(0, n_G_attr), sigma=diag(rep(1, n_G_attr)))
+
+
   # Data-generating process
 
   # Degree of sparseness in attributes explaining treatment only
@@ -118,6 +118,119 @@ generate_data <- function(n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30, treatmen
   zero_coefs_H <- sample(1:dim(H)[2], size=sparsity_rate_H*dim(H)[2])
   beta_H[zero_coefs_H] <- 0
 
+
+
+  # Add white noise to both models for treatment and outcome
+  eps_D <- rnorm(n=n, mean=0, sd=1)
+  eps_Y <- rnorm(n=n, mean=0, sd=1)
+
+  noise_D1 <- rbinom(n=n, size=3, prob=.5)
+  noise_D2 <- rpois(n=n, lambda=5)
+
+  # Treatment
+  # --- linear model
+  D <- 0 + G %*% beta_GD + eps_D
+  #D <- 0 + G %*% beta_GD + eps_D + noise_D1 + noise_D2
+  #D <- 0 + G %*% beta_GD + F %*% beta_F + eps_D
+  # --- logistic model
+  #proba_binom_model <- exp(0 + G %*% beta_GD + eps_D) / (1 + exp(0 + G %*% beta_GD + eps_D))
+  #D <- cbind(rbinom(n=n, size=1, prob=proba_binom_model))
+
+  # Outcome
+  #y <- 0 + D %*% treatment_effect + G %*% beta_GY + H %*% beta_H + eps_Y
+  y <- 0 + D %*% treatment_effect + G %*% beta_GY + eps_Y
+
+  # Add explanatory power outside of model estimated later so that
+  # not all variance can be explained.
+  noise_y1 <- rbinom(n=n, size=3, prob=.5)
+  noise_y2 <- rpois(n=n, lambda=5)
+  #y <- 0 + D %*% treatment_effect + G %*% beta_GY + H %*% beta_H + eps_Y + noise_y1 + noise_y2
+  #TODO
+
+
+
+  #TODO
+  # Implementation from Belloni et al. (2014)
+  # n <- 100
+  # n_G_attr <- 200
+  # treatment_effect <- .5
+
+  # Disturbances
+  eps_D <- rnorm(n=n, mean=0, sd=1)
+  eps_Y <- rnorm(n=n, mean=0, sd=1)
+
+  # Approximate sparsity
+  beta_GD <- 1 / seq(from=1, to=n_G_attr)**2
+  beta_GY <- 1 / seq(from=1, to=n_G_attr)**2
+
+  # Regressors
+  sigma_G <- matrix(.5, nrow=n_G_attr, ncol=n_G_attr)
+
+  for (j in 1:(n_G_attr)) {
+    power <- 1 - j
+    a <- seq(from=power, to=(n_G_attr-j), by=1)
+    sigma_G[, j] <- sigma_G[, j]**abs(a)
+  }
+
+  # Draw positively correlated features.
+  #G <- rmvnorm(n=n, mean=rep(0, n_G_attr), sigma=sigma_G)
+
+
+  # Disturbances
+  #eps_D <- rnorm(n=n, mean=0, sd=1)
+  #eps_Y <- rnorm(n=n, mean=0, sd=1)
+
+  #beta_GD <- rep(1, n_G_attr)
+  #beta_GY <- rep(1, n_G_attr)
+  #beta_GD[6:n_G_attr] <- 0
+  #beta_GY[6:n_G_attr] <- 0
+
+  # Regressors
+  #sigma_G <- diag(rep(.05, n_G_attr))
+
+  # Draw features.
+  #G <- rmvnorm(n=n, mean=rep(0, n_G_attr), sigma=sigma_G)
+
+  # Treatment
+  #D <- 0 + G %*% beta_GD + eps_D
+
+  # Outcome
+  #y <- 0 + D %*% treatment_effect + G %*% beta_GD + eps_Y
+  # Introduce sparseness
+  # Set small coefficients to zero
+  #a <- round(2/3 * n_G_attr)
+  #beta_GD[a:n_G_attr] <- 0
+  #beta_GY[a:n_G_attr] <- 0
+  #beta_GD[zero_coefs_GDY] <- 0
+  #beta_GY[zero_coefs_GDY] <- 0
+
+
+
+
+  if (dgp == 0) {
+
+    # Matrix of potential confounders
+    G <- rmvnorm(n=n, mean=rep(0, n_G_attr), sigma=diag(rep(1, n_G_attr)))
+
+    sparsity_rate_GDY <- unconfoundedness_rate
+    zero_coefs_GDY <- sample(1:dim(G)[2], size=sparsity_rate_GDY*dim(G)[2])
+
+    beta_GD <- rep(beta_GD_size, dim(G)[2])
+    beta_GY <- rep(beta_GY_size, dim(G)[2])
+    beta_GD[zero_coefs_GDY] <- 0
+    beta_GY[zero_coefs_GDY] <- 0
+
+    # Disturbances
+    eps_D <- rnorm(n=n, mean=0, sd=1)
+    eps_Y <- rnorm(n=n, mean=0, sd=1)
+
+    # Treatment
+    D <- 0 + G %*% beta_GD + eps_D
+    # Outcome
+    y <- 0 + D %*% treatment_effect + G %*% beta_GY + eps_Y
+  }
+
+
   #TODO TODO Get this code block organized!
   # Collect information which features' coefficients are set to zero
   sparsity_identifier_F <- rep(0, dim(F)[2])
@@ -147,129 +260,6 @@ generate_data <- function(n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30, treatmen
   #if (n/2 < n_assoc_attr_Z) {
   #  print("Warning: true model is high-dimensional")
   #}
-
-  # Treatment effect
-  beta_DY <- treatment_effect
-
-  # Add white noise to both models for treatment and outcome
-  eps_D <- rnorm(n=n, mean=0, sd=1)
-  eps_Y <- rnorm(n=n, mean=0, sd=1)
-
-  noise_D1 <- rbinom(n=n, size=3, prob=.5)
-  noise_D2 <- rpois(n=n, lambda=5)
-
-  # Treatment
-  # --- linear model
-  D <- 0 + G %*% beta_GD + eps_D
-  #D <- 0 + G %*% beta_GD + eps_D + noise_D1 + noise_D2
-  #D <- 0 + G %*% beta_GD + F %*% beta_F + eps_D
-  # --- logistic model
-  #proba_binom_model <- exp(0 + G %*% beta_GD + eps_D) / (1 + exp(0 + G %*% beta_GD + eps_D))
-  #D <- cbind(rbinom(n=n, size=1, prob=proba_binom_model))
-
-  # Outcome
-  #y <- 0 + D %*% beta_DY + G %*% beta_GY + H %*% beta_H + eps_Y
-  y <- 0 + D %*% beta_DY + G %*% beta_GY + eps_Y
-
-  # Add explanatory power outside of model estimated later so that
-  # not all variance can be explained.
-  noise_y1 <- rbinom(n=n, size=3, prob=.5)
-  noise_y2 <- rpois(n=n, lambda=5)
-  #y <- 0 + D %*% beta_DY + G %*% beta_GY + H %*% beta_H + eps_Y + noise_y1 + noise_y2
-  #TODO
-
-
-
-  #TODO
-  # Implementation from Belloni et al. (2014)
-  n <- n  # 100
-  n_G_attr <- n_G_attr  # 200
-
-  beta_DY <- beta_DY  # .5
-
-  # Disturbances
-  eps_D <- rnorm(n=n, mean=0, sd=1)
-  eps_Y <- rnorm(n=n, mean=0, sd=1)
-
-  # Approximate sparsity
-  beta_GD <- 1 / seq(from=1, to=n_G_attr)**2
-  beta_GY <- 1 / seq(from=1, to=n_G_attr)**2
-
-  # Regressors
-  sigma_G <- matrix(.5, nrow=n_G_attr, ncol=n_G_attr)
-
-  for (j in 1:(n_G_attr)) {
-    power <- 1 - j
-    a <- seq(from=power, to=(n_G_attr-j), by=1)
-    sigma_G[, j] <- sigma_G[, j]**abs(a)
-  }
-
-  # Draw positively correlated features.
-  #G <- rmvnorm(n=n, mean=rep(0, n_G_attr), sigma=sigma_G)
-
-  # Treatment
-  #D <- 0 + G %*% beta_GD + eps_D
-
-  # Outcome
-  #y <- 0 + D %*% beta_DY + G %*% beta_GD + eps_Y
-
-
-
-
-  #TODO
-  # Implementation of Omitted Variable Bias with Variable Selection
-  n <- n  # 500
-  n_G_attr <- n_G_attr  # 200
-
-  beta_DY <- beta_DY  # .5
-
-  # Disturbances
-  #eps_D <- rnorm(n=n, mean=0, sd=1)
-  #eps_Y <- rnorm(n=n, mean=0, sd=1)
-
-  #beta_GD <- rep(1, n_G_attr)
-  #beta_GY <- rep(1, n_G_attr)
-  #beta_GD[6:n_G_attr] <- 0
-  #beta_GY[6:n_G_attr] <- 0
-
-  # Regressors
-  #sigma_G <- diag(rep(.05, n_G_attr))
-
-  # Draw features.
-  #G <- rmvnorm(n=n, mean=rep(0, n_G_attr), sigma=sigma_G)
-
-  # Treatment
-  #D <- 0 + G %*% beta_GD + eps_D
-
-  # Outcome
-  #y <- 0 + D %*% beta_DY + G %*% beta_GD + eps_Y
-  # Introduce sparseness
-  # Set small coefficients to zero
-  #a <- round(2/3 * n_G_attr)
-  #beta_GD[a:n_G_attr] <- 0
-  #beta_GY[a:n_G_attr] <- 0
-  #beta_GD[zero_coefs_GDY] <- 0
-  #beta_GY[zero_coefs_GDY] <- 0
-
-
-  # Low dimensions
-  #n <- n # 100
-  #n_G_attr <- n_G_attr # 1, 2
-
-  #sigma_G <- cbind(c(1, .8), c(.8, 1))
-  #X <- rmvnorm(n=n, mean=rep(0, n_G_attr), sigma=sigma_G)
-  #G <- c(X[, 1])
-  #D <- X[, 2]
-
-  #beta_GD <- .8
-  #beta_GY <- .2
-  #beta_DY <- 0
-  #D <- 0 + beta_GD * G + eps_D
-  #y <- 0 + beta_DY * D + beta_GY * G + eps_Y
-
-
-
-
 
   # Create vector with covariate names.
   colname_F <- str_c(rep("F_", n_F_attr), seq(from=1, to=n_F_attr, by=1))
