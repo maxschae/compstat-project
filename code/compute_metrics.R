@@ -3,23 +3,26 @@
 # to evaluate the variable selection methods
 
 
-compute_metrics <- function(n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30, treatment_effect=.5,
-                                    beta_GD_size=.5, beta_GY_size=.25, beta_H_size=1,
-                                    beta_F_size=1,
-                                    unconfoundedness_rate=.9, selection_method="simple") {
+compute_metrics <- function(dgp, n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30,
+                            corr_G=0, treatment_effect=.5,
+                            beta_GD_size=.5, beta_GY_size=.25, beta_H_size=.5,
+                            beta_F_size=.5, colnames_covariates, colnames_confounders,
+                            nonzero_controls=5, selection_method="simple") {
 
 
   # Draw data once and split into train and test (*)
-  data_set <- generate_data(n=n,
+  data_set <- generate_data(dgp,
+                        n=n,
                         n_F_attr=n_F_attr,
                         n_G_attr=n_G_attr,
                         n_H_attr=n_H_attr,
+                        corr_G=corr_G,
                         treatment_effect=treatment_effect,
                         beta_GD_size=beta_GD_size,
                         beta_GY_size=beta_GY_size,
                         beta_H_size=beta_H_size,
                         beta_F_size=beta_F_size,
-                        unconfoundedness_rate=unconfoundedness_rate)
+                        nonzero_controls=nonzero_controls)
 
   data <- data_set$data
   # Shuffle data before train-test-split to ensure no unintended structure exists
@@ -31,23 +34,32 @@ compute_metrics <- function(n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30, treatm
   data_train <- data[1:(dim(data)[1]/2), ]
   data_test <- data[(dim(data)[1]/2+1):dim(data)[1], ]
 
-  true_covariate_identifier <- data_set$true_covariate_identifier
+  y_train <- data_train$y
+  D_train <- data_train$D
+
+  # Assemble regressor matrices for first and second stage
+  Z_train <- data.matrix(data_train[colnames_covariates])
+  X_train <- data.matrix(cbind(D_train, Z_train))
 
   # *Selection section*
   # Select covariates according to the simple or double-selection method
   if (selection_method=="simple") {
     #selection_identifier <- simple_select_covariates(data_train=data_train)
     #TODO
-    out <- simple_select_covariates(data_train=data_train)
+    out <- simple_select_covariates(y_train=y_train, X_train=X_train)
     selection_identifier <- out$selected_covars_one
     select_treatment_identifier <- out$select_treatment_effect
   }
   if (selection_method=="double") {
-    selection_identifier <- double_select_covariates(data_train=data_train)
-    select_treatment_identifier <- NaN
+    selection_identifier <- double_select_covariates(D_train=D_train,
+                                                     Z_train=Z_train,
+                                                     y_train=y_train,
+                                                     X_train=X_train)
+    select_treatment_identifier <- NaN #TODO
   }
 
-
+  # Collect vector identifying non-zero controls (i.e. confounders)
+  true_covariate_identifier <- data_set$true_covariate_identifier
   if (length(true_covariate_identifier) != length(selection_identifier)) {
     print("Warning: check how true_covariate_identifier vector is initialized in data_generating_process.R")
   }
@@ -55,9 +67,9 @@ compute_metrics <- function(n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30, treatm
   covariate_identifier <- data.frame(rbind(true_covariate_identifier,
                                            selection_identifier))
 
-  #names(covariate_identifier) <- colnames_GH
-  names(covariate_identifier) <- colname_G
-  covariate_identifier_G <- covariate_identifier[colname_G]
+  names(covariate_identifier) <- colnames_covariates
+  # Select confounders
+  covariate_identifier_G <- covariate_identifier[colnames_confounders]
   covariate_identifier_G[is.na(covariate_identifier_G)] <- 0  # work with zero
 
   # The setup here is labeled as follows:
@@ -81,26 +93,19 @@ compute_metrics <- function(n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30, treatm
 
 
   #TODO
-  tp_selection_rate_G <- tp_selection_count_G #/ n_G_attr #/(unconfoundedness_rate+1e-4)
-  tn_selection_rate_G <- tn_selection_count_G #/ n_G_attr #/(unconfoundedness_rate+1e-4)
-  fp_selection_rate_G <- fp_selection_count_G #/ n_G_attr #/(unconfoundedness_rate+1e-4)
-  fn_selection_rate_G <- fn_selection_count_G #/ n_G_attr #/(unconfoundedness_rate+1e-4)
+  tp_selection_rate_G <- tp_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
+  tn_selection_rate_G <- tn_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
+  fp_selection_rate_G <- fp_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
+  fn_selection_rate_G <- fn_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
 
 
 
   # Compute metrics of interest (see below) with test data.
   y_test <- data_test$y
   D_test <- data_test$D
-  F_test <- data_test[colname_F]
-  G_test <- data_test[colname_G]
-  H_test <- data_test[colname_H]
 
   # Assemble different regressor matrices
-  X_test <- data.matrix(cbind(D_test, G_test, H_test))
-  Z_test <- data.matrix(cbind(G_test, H_test))
-
-  X_test <- data.matrix(cbind(D_test, G_test))
-  Z_test <- data.matrix(G_test)
+  Z_test <- data.matrix(data_test[colnames_covariates])
 
   Z_test_selected <- Z_test[, selection_identifier[!is.na(selection_identifier)]]
   X_test_selected <- data.matrix(cbind(D_test, Z_test_selected))

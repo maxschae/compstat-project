@@ -2,9 +2,10 @@
 # Define the data-generating processes
 
 
-generate_data <- function(dgp=0, n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30, treatment_effect=.5,
+generate_data <- function(dgp=0, n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30,
+                          corr_G=0, treatment_effect=.5,
                           beta_GD_size=.5, beta_GY_size=.25, beta_H_size=1, beta_F_size=1,
-                          unconfoundedness_rate=.9) {
+                          nonzero_controls=NaN) {
 
 
   # Test function arguments
@@ -98,17 +99,15 @@ generate_data <- function(dgp=0, n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30, t
   beta_F[zero_coefs_F] <- 0
 
 
-  # "Unconfoundedness rate" :
   # Sparsity in both models explaining treatment and outcome,
   # i.e. the same geographical features are important to predict D and Y.
   # However, different effect sizes are allowed.
-  sparsity_rate_GDY <- unconfoundedness_rate
-  zero_coefs_GDY <- sample(1:dim(G)[2], size=sparsity_rate_GDY*dim(G)[2])
+  zero_coefs_GDY <- sample(1:n_G_attr, size=(n_G_attr-nonzero_controls))
 
-  beta_GD <- rep(beta_GD_size, dim(G)[2])
+  beta_GD <- rep(beta_GD_size, n_G_attr)
   beta_GD[zero_coefs_GDY] <- 0
 
-  beta_GY <- rep(beta_GY_size, dim(G)[2])
+  beta_GY <- rep(beta_GY_size, n_G_attr)
   beta_GY[zero_coefs_GDY] <- 0
 
 
@@ -209,14 +208,26 @@ generate_data <- function(dgp=0, n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30, t
 
   if (dgp == 0) {
 
-    # Matrix of potential confounders
-    G <- rmvnorm(n=n, mean=rep(0, n_G_attr), sigma=diag(rep(1, n_G_attr)))
+    # Specify variance-covariance matrix
+    correlation_term <- corr_G
+    sigma_G <- matrix(correlation_term, nrow=n_G_attr, ncol=n_G_attr)
 
-    sparsity_rate_GDY <- unconfoundedness_rate
-    zero_coefs_GDY <- sample(1:dim(G)[2], size=sparsity_rate_GDY*dim(G)[2])
+    for (j in 1:(n_G_attr)) {
+      power <- 1 - j
+      a <- seq(from=power, to=(n_G_attr-j), by=1)
+      sigma_G[, j] <- sigma_G[, j]**abs(a)
+    }
 
-    beta_GD <- rep(beta_GD_size, dim(G)[2])
-    beta_GY <- rep(beta_GY_size, dim(G)[2])
+    diag(sigma_G) <- rep(1, n_G_attr)
+
+    # Draw potential controls from multivariate normal distribution.
+    G <- rmvnorm(n=n, mean=rep(0, n_G_attr), sigma=sigma_G)
+
+    # Sparsity
+    zero_coefs_GDY <- sample(1:n_G_attr, size=(n_G_attr-nonzero_controls))
+
+    beta_GD <- rep(beta_GD_size, n_G_attr)
+    beta_GY <- rep(beta_GY_size, n_G_attr)
     beta_GD[zero_coefs_GDY] <- 0
     beta_GY[zero_coefs_GDY] <- 0
 
@@ -228,38 +239,79 @@ generate_data <- function(dgp=0, n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30, t
     D <- 0 + G %*% beta_GD + eps_D
     # Outcome
     y <- 0 + D %*% treatment_effect + G %*% beta_GY + eps_Y
+
+    sparsity_identifier <- rep(0, n_G_attr)
+    sparsity_identifier[zero_coefs_GDY] <- 1
+    true_covariate_identifier <- seq(from=1, to=n_G_attr, by=1)
+    true_covariate_identifier[sparsity_identifier==1] <- NaN
   }
 
 
-  #TODO TODO Get this code block organized!
-  # Collect information which features' coefficients are set to zero
-  sparsity_identifier_F <- rep(0, dim(F)[2])
-  sparsity_identifier_G <- rep(0, dim(G)[2])
-  sparsity_identifier_H <- rep(0, dim(H)[2])
-  sparsity_identifier_F[zero_coefs_F] <- 1
-  sparsity_identifier_G[zero_coefs_GDY] <- 1
-  sparsity_identifier_H[zero_coefs_H] <- 1
-  sparsity_identifier <- append(sparsity_identifier_F, sparsity_identifier_G)
-  sparsity_identifier <- append(sparsity_identifier, sparsity_identifier_H)
-  sparsity_identifier <- append(sparsity_identifier_G, sparsity_identifier_H) #TODO _F
-  sparsity_identifier <- sparsity_identifier_G
-  # Collect identifier for variables which are explaining either D or Y
-  true_covariate_identifier <- seq(from=1, to=(n_F_attr+n_G_attr+n_H_attr), by=1)
-  true_covariate_identifier[sparsity_identifier==1] <- NaN
-  true_covariate_identifier <- seq(from=1, to=(n_G_attr+n_H_attr), by=1)
-  true_covariate_identifier[sparsity_identifier==1] <- NaN
-  true_covariate_identifier <- seq(from=1, to=n_G_attr, by=1)
-  true_covariate_identifier[sparsity_identifier==1] <- NaN
+  if (dgp == 1) {
 
-  # Check whether true model is high-dimensional
-  n_assoc_attr_X <- n_F_attr * (1 - sparsity_rate_F) + n_G_attr * (1 - sparsity_rate_GDY) + n_H_attr * (1 - sparsity_rate_H)
-  n_assoc_attr_Z <- n_F_attr * (1 - sparsity_rate_F) + n_G_attr * (1 - sparsity_rate_GDY)
-  #if (n/2 < n_assoc_attr_X) {
-  #  print("Warning: true model is high-dimensional")
-  #}
-  #if (n/2 < n_assoc_attr_Z) {
-  #  print("Warning: true model is high-dimensional")
-  #}
+    # Specify variance-covariance matrix
+    correlation_term <- corr_G
+    sigma_G <- matrix(correlation_term, nrow=n_G_attr, ncol=n_G_attr)
+
+    for (j in 1:(n_G_attr)) {
+      power <- 1 - j
+      a <- seq(from=power, to=(n_G_attr-j), by=1)
+      sigma_G[, j] <- sigma_G[, j]**abs(a)
+    }
+
+    sigma_F <- diag(rep(1, n_F_attr))
+    diag(sigma_G) <- rep(1, n_G_attr)
+    sigma_H <- diag(rep(1, n_H_attr))
+
+    # Draw potential controls from multivariate normal distribution.
+    F <- rmvnorm(n=n, mean=rep(0, n_F_attr), sigma=sigma_F)
+    G <- rmvnorm(n=n, mean=rep(0, n_G_attr), sigma=sigma_G)
+    H <- rmvnorm(n=n, mean=rep(0, n_H_attr), sigma=sigma_H)
+
+    # Sparsity
+    zero_coefs_F <- sample(1:n_F_attr, size=(n_F_attr-nonzero_controls))
+    zero_coefs_GDY <- sample(1:n_G_attr, size=(n_G_attr-nonzero_controls))
+    zero_coefs_H <- sample(1:n_H_attr, size=(n_H_attr-nonzero_controls))
+
+    # Coefficients
+    beta_F <- rep(beta_F_size, n_F_attr)
+    beta_GD <- rep(beta_GD_size, n_G_attr)
+    beta_GY <- rep(beta_GY_size, n_G_attr)
+    beta_H <- rep(beta_H_size, n_H_attr)
+
+    beta_F[zero_coefs_F] <- 0
+    beta_GD[zero_coefs_GDY] <- 0
+    beta_GY[zero_coefs_GDY] <- 0
+    beta_H[zero_coefs_H] <- 0
+
+    # Disturbances
+    eps_D <- rnorm(n=n, mean=0, sd=1)
+    eps_Y <- rnorm(n=n, mean=0, sd=1)
+
+    # Treatment
+    D <- 0 + F %*% beta_F + G %*% beta_GD + eps_D
+    # Outcome
+    y <- 0 + D %*% treatment_effect + G %*% beta_GY + H %*% beta_H + eps_Y
+
+
+
+    sparsity_identifier_F <- rep(0, n_F_attr)
+    sparsity_identifier_G <- rep(0, n_G_attr)
+    sparsity_identifier_H <- rep(0, n_H_attr)
+    sparsity_identifier_F[zero_coefs_F] <- 1
+    sparsity_identifier_G[zero_coefs_GDY] <- 1
+    sparsity_identifier_H[zero_coefs_H] <- 1
+    sparsity_identifier <- append(sparsity_identifier_F,
+                                  sparsity_identifier_G)
+    sparsity_identifier <- append(sparsity_identifier, sparsity_identifier_H)
+
+    true_covariate_identifier <- seq(from=1, to=(n_F_attr+n_G_attr+n_H_attr), by=1)
+    true_covariate_identifier[sparsity_identifier==1] <- NaN
+  }
+
+
+
+
 
   # Create vector with covariate names.
   colname_F <- str_c(rep("F_", n_F_attr), seq(from=1, to=n_F_attr, by=1))
