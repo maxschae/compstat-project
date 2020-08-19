@@ -1,0 +1,28 @@
+\documentclass[10pt]{article}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
+\tikzset{>={Latex[width=2mm,length=2mm]}}
+
+\begin{document}
+
+\begin{tikzpicture}[scale=2,font=\footnotesize]
+\tikzstyle{s}=[circle,draw,inner sep=2,fill=black]
+\tikzstyle{h}=[circle,draw, inner sep=2]
+
+
+% Graph 0
+% Basic DGP - 0
+\node [s, label=above:$D$] (d) at (2,2){};
+\node [s, label=right:$Y$] (y) at (6,2){};
+\node [s, label=above:$G$] (g) at (3,1){};
+\node [s, label=above:$G'$] (g_) at (3.75,0.75){};
+\draw [->] (d) edge (y);
+\draw [->] (g) edge (d);
+\draw [->] (g) edge (y);
+\draw [dashed] (g) to [out=-40,in=-160] (g_);
+
+
+
+\end{tikzpicture}
+\end{document}

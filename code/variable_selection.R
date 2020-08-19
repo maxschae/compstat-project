@@ -13,11 +13,6 @@ simple_select_covariates <- function(y_train, X_train) {
   lasso_coefs_one <- cbind(coef(lasso_one_cv, s="lambda.min")[-1])
   lasso_coefs_one <- cbind(coef(lasso_one_cv, s="lambda.1se")[-1])
 
-  select_treatment_effect <- 0 #TODO
-  if (lasso_coefs_one[1, ] == 0) {
-    select_treatment_effect <- 1
-  }
-
   # Exclude coef. of treatment since we are interested in selecting covariates
   lasso_coefs_one <- lasso_coefs_one[2:dim(X_train)[2], ]
 
@@ -26,8 +21,7 @@ simple_select_covariates <- function(y_train, X_train) {
   # Keep indicators of selected covariates.
   selected_covars_one[lasso_coefs_one==0] <- NaN
 
-  #return(selected_covars_one)
-  return(list(selected_covars_one=selected_covars_one, select_treatment_effect=select_treatment_effect))
+  return(selected_covars_one)
 }
 
 
@@ -36,8 +30,7 @@ double_select_covariates <- function(D_train, Z_train, y_train, X_train) {
   # Double-selection procedure following Belloni et al. (2014)
 
   # 1. Use Lasso to select covariates given their association with outcome Y
-  selected_covars_one <- simple_select_covariates(y_train=y_train,
-                                                  X_train=X_train)$selected_covars_one
+  selected_covars_one <- simple_select_covariates(y_train=y_train, X_train=X_train)
 
   # 2. Use Lasso to select covariates given their association with tratment D
   lasso_two_cv <- cv.glmnet(Z_train, D_train, alpha=1, intercept=FALSE,

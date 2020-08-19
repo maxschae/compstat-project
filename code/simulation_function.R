@@ -22,7 +22,7 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
   fp_selection_rate_G_vec <- rep(NA, length(sim_parameter_vec))
   fn_selection_rate_G_vec <- rep(NA, length(sim_parameter_vec))
 
-  select_treatment_identifier_vec <- rep(NA, length(sim_parameter_vec))
+  selection_confounder_identifier_vec <- rep(NA, length(sim_parameter_vec))
 
   colnames_confounders <- str_c(rep("G_", n_G_attr), seq(from=1, to=n_G_attr, by=1))
   colnames_covariates <- str_c(rep("G_", n_G_attr), seq(from=1, to=n_G_attr, by=1))
@@ -207,7 +207,7 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
     fp_selection_rate_G_vec[i] <- mean(unlist(sim_results_vec[5, 1:R]))
     fn_selection_rate_G_vec[i] <- mean(unlist(sim_results_vec[6, 1:R]))
 
-    select_treatment_identifier_vec[i] <- mean(unlist(sim_results_vec[7, 1:R]))
+    selection_confounder_identifier_vec[i] <- mean(unlist(sim_results_vec[7, 1:R]))
 
     end_time <- Sys.time()
     if (i == 1) {
@@ -226,5 +226,5 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
               tn_selection_rate_G_vec=tn_selection_rate_G_vec,
               fp_selection_rate_G_vec=fp_selection_rate_G_vec,
               fn_selection_rate_G_vec=fn_selection_rate_G_vec,
-              select_treatment_identifier_vec=select_treatment_identifier_vec))
+              selection_confounder_identifier_vec=selection_confounder_identifier_vec))
 }

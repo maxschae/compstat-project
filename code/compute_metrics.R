@@ -24,6 +24,12 @@ compute_metrics <- function(dgp, n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30,
                         beta_F_size=beta_F_size,
                         nonzero_controls=nonzero_controls)
 
+  if (dgp == "houseprices") {
+    data_set <- generate_data_houseprices_dgp0(n=n, n_G_attr=n_G_attr,
+                                               corr_G=corr_G,
+                                               beta_GY_inflator=beta_GY_size)
+  }
+
   data <- data_set$data
   # Shuffle data before train-test-split to ensure no unintended structure exists
   # due to the order of observations
@@ -44,18 +50,13 @@ compute_metrics <- function(dgp, n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30,
   # *Selection section*
   # Select covariates according to the simple or double-selection method
   if (selection_method=="simple") {
-    #selection_identifier <- simple_select_covariates(data_train=data_train)
-    #TODO
-    out <- simple_select_covariates(y_train=y_train, X_train=X_train)
-    selection_identifier <- out$selected_covars_one
-    select_treatment_identifier <- out$select_treatment_effect
+    selection_identifier <- simple_select_covariates(y_train=y_train, X_train=X_train)
   }
   if (selection_method=="double") {
     selection_identifier <- double_select_covariates(D_train=D_train,
                                                      Z_train=Z_train,
                                                      y_train=y_train,
                                                      X_train=X_train)
-    select_treatment_identifier <- NaN #TODO
   }
 
   # Collect vector identifying non-zero controls (i.e. confounders)
@@ -99,6 +100,14 @@ compute_metrics <- function(dgp, n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30,
   fn_selection_rate_G <- fn_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
 
 
+  selection_confounder_identifier <- NaN
+  if (dgp == "houseprices") {
+    # Compute share of individual confounder that was excluded from model
+    selection_confounder_identifier <- selection_identifier
+    selection_confounder_identifier[is.na(selection_confounder_identifier)] <- 0
+    selection_confounder_identifier <- selection_confounder_identifier[1]
+    #selection_confounder_identifier <- covariate_identifier_G[1]
+  }
 
   # Compute metrics of interest (see below) with test data.
   y_test <- data_test$y
@@ -122,7 +131,7 @@ compute_metrics <- function(dgp, n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30,
               tn_selection_rate_G=tn_selection_rate_G,
               fp_selection_rate_G=fp_selection_rate_G,
               fn_selection_rate_G=fn_selection_rate_G,
-              select_treatment_identifier=select_treatment_identifier))
+              selection_confounder_identifier=selection_confounder_identifier))
   # (*) Since variables (within a class like G or H) are
   # excluded from the true model at random, drawing *one* dataset which
   # is then split into train and test data ensures that the true association
