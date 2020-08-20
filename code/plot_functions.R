@@ -72,13 +72,8 @@ variable_selection_rate_plot <- function(df, selection_method, subtitle="", xlab
           geom_line(aes(y=0), lty="dashed") +
           labs(title="TP, TN, FP, FN rates",
                      subtitle=subtitle,
-                     caption="Source: ",
+                     caption="Source: Dark blue shows True-Positive, Light blue is True-Negative, Dark red is False-Positive, Light red is False-Negative",
                      x=xlab, y="")
-
-  #geom_line(aes_string(y=str_c("tp_selection_rate_G_", selection_method)), size=1, col="blue", alpha=.9) +
-  #geom_line(aes_string(y=str_c("tn_selection_rate_G_", selection_method)), size=1, col="blue", alpha=.5) +
-  #geom_line(aes_string(y=str_c("fp_selection_rate_G_", selection_method)), size=1, col="red", alpha=.9) +
-  #geom_line(aes_string(y=str_c("fn_selection_rate_G_", selection_method)), size=1, col="red", alpha=.5) +
 
   if (is.na(ylim) == FALSE) {
     plot <- plot + ylim(ylim)
@@ -92,21 +87,18 @@ confounding_bias_plot <- function(df, selection_method, subtitle="", xlab="", yl
 
   plot <- ggplot(data=df, aes(x=x_axis))
   plot <- plot +
-          geom_line(aes_string(y="mean_squared_bias"), size=1, col="red", alpha=1) +
-          geom_line(aes_string(y="mean_abs_dev_bias"), size=1, col="#575757", alpha=.6) +
-          geom_line(aes_string(y="median_bias"), size=1, col="#575757", alpha=1) +
+          geom_line(aes_string(y="root_mean_squared_bias"), size=1, col="#f5ce42", alpha=1) +
+          geom_line(aes_string(y="mean_abs_dev_bias"), size=1, col="red", alpha=.7) +
+          geom_line(aes_string(y="median_bias"), size=1, col="#bf42f5", alpha=1) +
           geom_line(aes(y=0), lty="dashed") +
           labs(title="Bias of Treatment Coefficient",
                      subtitle=subtitle,
-                     caption="Source: ",
+                     caption="Source: Purple shows Median Bias, Orange is Root Mean Squared Bias, Red is Average Absolute Deviation",
                      x=xlab, y="")
 
   if (is.na(ylim) == FALSE) {
     plot <- plot + ylim(ylim)
   }
-  #geom_line(aes_string(y=str_c("mean_squared_bias_", selection_method)), size=1, col="red", alpha=1) +
-  #geom_line(aes_string(y=str_c("mean_abs_dev_bias_", selection_method)), size=1, col="#575757", alpha=.6) +
-  #geom_line(aes_string(y=str_c("median_bias_", selection_method)), size=1, col="#575757", alpha=1) +
 
   return(plot)
 }
@@ -127,9 +119,6 @@ purchasing_power_exclusion_plot <- function(df, selection_method, subtitle="", x
   if (is.na(ylim) == FALSE) {
     plot <- plot + ylim(ylim)
   }
-  #geom_line(aes_string(y=str_c("mean_squared_bias_", selection_method)), size=1, col="red", alpha=1) +
-  #geom_line(aes_string(y=str_c("mean_abs_dev_bias_", selection_method)), size=1, col="#575757", alpha=.6) +
-  #geom_line(aes_string(y=str_c("median_bias_", selection_method)), size=1, col="#575757", alpha=1) +
 
   return(plot)
 }
@@ -157,7 +146,7 @@ sim_plot_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
                               beta_F_size=beta_F_size,
                               nonzero_controls=nonzero_controls)
 
-  mean_squared_bias <- simulation_results$mean_squared_bias_vec
+  root_mean_squared_bias <- simulation_results$root_mean_squared_bias_vec
   mean_abs_dev_bias <- simulation_results$mean_abs_dev_bias_vec
   median_bias <- simulation_results$median_bias_vec
   tp_selection_rate_G <- simulation_results$tp_selection_rate_G_vec
@@ -180,7 +169,7 @@ sim_plot_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
   p_purchasing_power_exclusion <- purchasing_power_exclusion_plot(df=df, subtitle=str_c(selection_method, "-selection"), xlab=iter_over, ylim=c(-.1, 1.1))
 
   # Metrics --- confounder bias
-  df <- data.frame(cbind(x_axis, mean_squared_bias, mean_abs_dev_bias, median_bias))
+  df <- data.frame(cbind(x_axis, root_mean_squared_bias, mean_abs_dev_bias, median_bias))
   # Plot
   p_confounder_bias <- confounding_bias_plot(df=df, selection_method=selection_method, subtitle=str_c(selection_method, "-selection"), xlab=iter_over, ylim=ylim_bias)
 

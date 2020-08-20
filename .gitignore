@@ -3,9 +3,7 @@
 !.gitignore
 
 literature/
-graphs/sim_study*
-
-code/PS_5_Group_14_final.ipynb
+graphs/archive
 
 
 

@@ -13,7 +13,7 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
       "repititions for each value")
 
   # Initialize containers
-  mean_squared_bias_vec <- rep(NA, length(sim_parameter_vec))
+  root_mean_squared_bias_vec <- rep(NA, length(sim_parameter_vec))
   mean_abs_dev_bias_vec <- rep(NA, length(sim_parameter_vec))
   median_bias_vec <- rep(NA, length(sim_parameter_vec))
   mean_test_MSE_vec <- rep(NA, length(sim_parameter_vec))
@@ -196,7 +196,8 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
 
 
     # Metrics --- confounder bias
-    mean_squared_bias_vec[i] <- mean((unlist(sim_results_vec[1, 1:R]))**2)
+    #mean_squared_bias_vec[i] <- mean((unlist(sim_results_vec[1, 1:R]))**2)
+    root_mean_squared_bias_vec[i] <- sqrt(mean((unlist(sim_results_vec[1, 1:R]))**2))
     mean_abs_dev_bias_vec[i] <- mean(abs(unlist(sim_results_vec[1, 1:R])))
     median_bias_vec[i] <- median(unlist(sim_results_vec[1, 1:R]))
     # Metrics --- prediction
@@ -218,7 +219,7 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
   }
 
 
-  return(list(mean_squared_bias_vec=mean_squared_bias_vec,
+  return(list(root_mean_squared_bias_vec=root_mean_squared_bias_vec,
               mean_abs_dev_bias_vec=mean_abs_dev_bias_vec,
               median_bias_vec=median_bias_vec,
               mean_test_MSE_vec=mean_test_MSE_vec,

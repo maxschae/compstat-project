@@ -24,16 +24,17 @@
 \node [s, label=above:$H'$] (h_) at (5.25,3.15){};
 \node [s, label=right:$Y$] (y) at (6,2){};
 \node [s, label=above:$G$] (g) at (3,1){};
-\node [s, label=left:$O$] (o) at (1.5,.75){};
+\node [s, label=left:$F$] (f) at (1.5,.75){};
+\node [s, label=right:$F'$] (f_) at (2,.5){};
 \node [s, label=above:$G'$] (g_) at (3.75,0.75){};
 \draw [->] (h) edge (y);
 \draw [->] (d) edge (y);
 \draw [->] (g) edge (d);
-\draw [->] (o) edge (d);
+\draw [->] (f) edge (d);
 \draw [->] (g) edge (y);
 \draw [dashed] (h) to [out=40,in=160] (h_);
 \draw [dashed] (g) to [out=-40,in=-160] (g_);
-
+\draw [dashed] (f) to [out=-60,in=-160] (f_);
 
 
 
