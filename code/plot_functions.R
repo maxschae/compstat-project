@@ -116,8 +116,9 @@ purchasing_power_exclusion_plot <- function(df, selection_method, subtitle="", x
           geom_line(aes(y=0), lty="dashed") +
           labs(title="Selection of the Confounder 'Purchasing Power'",
                      subtitle=subtitle,
-                     caption="Source: ",
-                     x=xlab, y="")
+                     caption="",
+                     x=xlab, y="") +
+          theme_grey(base_size=15)
 
   if (is.na(ylim[1]) == FALSE) {
     plot <- plot + ylim(ylim)
@@ -130,7 +131,6 @@ purchasing_power_exclusion_plot <- function(df, selection_method, subtitle="", x
 
 
 sim_plot_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
-                             selection_method,
                              n, n_F_attr,
                              n_G_attr, n_H_attr,
                              treatment_effect, beta_GD_size,
@@ -138,7 +138,8 @@ sim_plot_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
                              nonzero_controls,
                              ylim_select=NaN, ylim_bias=NaN) {
 
-
+  # Run the simulation varying over a parameter for the SIMPLE selection
+  selection_method <- "simple"
   simulation_results <- simulation_wrapper(dgp=dgp, R=R, iter_over=iter_over,
                               sim_parameter_vec=sim_parameter_vec,
                               selection_method=selection_method,
@@ -160,27 +161,89 @@ sim_plot_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
   fn_selection_rate_G <- simulation_results$fn_selection_rate_G_vec
   selection_confounder_identifier <- simulation_results$selection_confounder_identifier_vec
 
-  # Visualization
+  # Construct the plots for the simple selection
   x_axis <- sim_parameter_vec
   # Metrics --- variable selection
   df <- data.frame(cbind(x_axis,
                          tp_selection_rate_G, tn_selection_rate_G,
                          fp_selection_rate_G, fn_selection_rate_G))
   # Plot
-  p_variable_select <- variable_selection_rate_plot(df=df, selection_method=selection_method, subtitle=str_c(selection_method, "-selection"), xlab=iter_over, ylim=ylim_select)
+  p_variable_select_simple <- variable_selection_rate_plot(df=df,
+                                        selection_method=selection_method,
+                                        subtitle=str_c(selection_method, "-selection"),
+                                        xlab=iter_over, ylim=ylim_select)
 
   # Show exclusion rate of particular confounder, default: 'purchasing power'
   df <- data.frame(cbind(x_axis, selection_confounder_identifier))
-  p_purchasing_power_exclusion <- purchasing_power_exclusion_plot(df=df, subtitle=str_c(selection_method, "-selection"), xlab=iter_over, ylim=c(-.1, 1.1))
+  p_purchasing_power_exclusion_simple <- purchasing_power_exclusion_plot(df=df,
+                                            subtitle=str_c(selection_method, "-selection"),
+                                            xlab=iter_over, ylim=c(-.1, 1.1))
 
   # Metrics --- confounder bias
   df <- data.frame(cbind(x_axis, root_mean_squared_bias, mean_abs_dev_bias, median_bias))
   # Plot
-  p_confounder_bias <- confounding_bias_plot(df=df, selection_method=selection_method, subtitle=str_c(selection_method, "-selection"), xlab=iter_over, ylim=ylim_bias)
+  p_confounder_bias_simple <- confounding_bias_plot(df=df,
+                                        selection_method=selection_method,
+                                        subtitle=str_c(selection_method, "-selection"),
+                                        xlab=iter_over, ylim=ylim_bias)
 
-  return(list(p_variable_select=p_variable_select,
-              p_confounder_bias=p_confounder_bias,
-              p_purchasing_power_exclusion=p_purchasing_power_exclusion))
+
+
+  # Run the simulation varying over a parameter for the DOUBLE selection
+  selection_method <- "double"
+  simulation_results <- simulation_wrapper(dgp=dgp, R=R, iter_over=iter_over,
+                              sim_parameter_vec=sim_parameter_vec,
+                              selection_method=selection_method,
+                              n=n, n_F_attr=n_F_attr,
+                              n_G_attr=n_G_attr, n_H_attr=n_H_attr,
+                              treatment_effect=treatment_effect,
+                              beta_GD_size=beta_GD_size,
+                              beta_GY_size=beta_GY_size,
+                              beta_F_size=beta_F_size,
+                              beta_H_size=beta_H_size,
+                              nonzero_controls=nonzero_controls)
+
+  root_mean_squared_bias <- simulation_results$root_mean_squared_bias_vec
+  mean_abs_dev_bias <- simulation_results$mean_abs_dev_bias_vec
+  median_bias <- simulation_results$median_bias_vec
+  tp_selection_rate_G <- simulation_results$tp_selection_rate_G_vec
+  tn_selection_rate_G <- simulation_results$tn_selection_rate_G_vec
+  fp_selection_rate_G <- simulation_results$fp_selection_rate_G_vec
+  fn_selection_rate_G <- simulation_results$fn_selection_rate_G_vec
+  selection_confounder_identifier <- simulation_results$selection_confounder_identifier_vec
+
+  # Construct the plots for the double selection
+  x_axis <- sim_parameter_vec
+  # Metrics --- variable selection
+  df <- data.frame(cbind(x_axis,
+                         tp_selection_rate_G, tn_selection_rate_G,
+                         fp_selection_rate_G, fn_selection_rate_G))
+  # Plot
+  p_variable_select_double <- variable_selection_rate_plot(df=df,
+                                        selection_method=selection_method,
+                                        subtitle=str_c(selection_method, "-selection"),
+                                        xlab=iter_over, ylim=ylim_select)
+
+  # Show exclusion rate of particular confounder, default: 'purchasing power'
+  df <- data.frame(cbind(x_axis, selection_confounder_identifier))
+  p_purchasing_power_exclusion_double <- purchasing_power_exclusion_plot(df=df,
+                                            subtitle=str_c(selection_method, "-selection"),
+                                            xlab=iter_over, ylim=c(-.1, 1.1))
+
+  # Metrics --- confounder bias
+  df <- data.frame(cbind(x_axis, root_mean_squared_bias, mean_abs_dev_bias, median_bias))
+  # Plot
+  p_confounder_bias_double <- confounding_bias_plot(df=df,
+                                        selection_method=selection_method,
+                                        subtitle=str_c(selection_method, "-selection"),
+                                        xlab=iter_over, ylim=ylim_bias)
+
+  return(list(p_variable_select_simple=p_variable_select_simple,
+              p_confounder_bias_simple=p_confounder_bias_simple,
+              p_purchasing_power_exclusion_simple=p_purchasing_power_exclusion_simple,
+              p_variable_select_double=p_variable_select_double,
+              p_confounder_bias_double=p_confounder_bias_double,
+              p_purchasing_power_exclusion_double=p_purchasing_power_exclusion_double))
 }
 
 

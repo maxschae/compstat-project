@@ -103,8 +103,6 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
 
   # Simulation with R runs WHILE varying over a parameter.
   if (is.na(iter_over) == FALSE) {
-    cat("SIMULATION STARTED: vary over", iter_over, "with", R,
-        "repititions for each value")
 
     # Initialize containers
     root_mean_squared_bias_vec <- rep(NA, length(sim_parameter_vec))
