@@ -130,12 +130,11 @@ purchasing_power_exclusion_plot <- function(df, selection_method, subtitle="", x
 
 
 
-sim_plot_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
-                             n, n_F_attr,
-                             n_G_attr, n_H_attr,
-                             treatment_effect, beta_GD_size,
-                             beta_GY_size, beta_F_size, beta_H_size,
-                             nonzero_controls,
+sim_plot_wrapper <- function(dgp="A", R=10, iter_over=NaN, sim_parameter_vec=c(NA, NA),
+                             n=400, n_F_attr=100, n_G_attr=100, n_H_attr=100,
+                             treatment_effect=.25, beta_GD_size=.25,
+                             beta_GY_size=.1, beta_F_size=.5, beta_H_size=.5,
+                             nonzero_controls=10,
                              ylim_select=NaN, ylim_bias=NaN) {
 
   # Run the simulation varying over a parameter for the SIMPLE selection
@@ -250,10 +249,10 @@ sim_plot_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
 
 
 
-produce_lasso_coef_shrink_plot <- function(dgp, n, n_F_attr=NaN, n_G_attr, n_H_attr=NaN,
-                                           treatment_effect, beta_GD_size, beta_GY_size,
+produce_lasso_coef_shrink_plot <- function(dgp="A", n=400, n_F_attr=NaN, n_G_attr=100, n_H_attr=NaN,
+                                           treatment_effect=.25, beta_GD_size=.25, beta_GY_size=.1,
                                            beta_F_size=.5, beta_H_size=.5,
-                                           nonzero_controls,
+                                           nonzero_controls=10,
                                            lambda_grid=seq(0, 1, by=.02),
                                            title="") {
 

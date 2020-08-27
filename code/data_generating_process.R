@@ -135,7 +135,8 @@ generate_data_B <- function(n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30, corr_G
 
 
 
-generate_data_houseprices <- function(n=200, n_F_attr=30, n_G_attr=100, n_H_attr=100, corr_G=0) {
+generate_data_houseprices <- function(n=200, n_F_attr=100, n_G_attr=100, n_H_attr=100,
+                                      beta_GY_inflator=1, corr_G=0) {
 
 
   # Data-generating process inspired by [PAPER]
@@ -213,6 +214,8 @@ generate_data_houseprices <- function(n=200, n_F_attr=30, n_G_attr=100, n_H_attr
   # and coefficients are scaled down up by roughly one-percent of the median house price.
   c <- .01*175000
   treatment_effect <- beta_DY*c
+  beta_GY <- beta_GY * beta_GY_inflator
+  
   y <- -1200000 + D %*% treatment_effect + G %*% beta_GY*c + H %*% beta_H*c + H_5d %*% beta_H5d*c + eps_Y
 
 

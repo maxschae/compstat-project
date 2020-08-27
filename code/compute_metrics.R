@@ -77,14 +77,13 @@ compute_metrics <- function(data, true_covariate_identifier, selection_method,
   fn_selection_rate_G <- fn_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
 
 
-  selection_confounder_identifier <- NaN
-  if (dgp == "houseprices") {
-    # Compute share of individual confounder that was excluded from model
-    selection_confounder_identifier <- selection_identifier
-    selection_confounder_identifier[is.na(selection_confounder_identifier)] <- 0
-    selection_confounder_identifier <- selection_confounder_identifier[1]
-    #selection_confounder_identifier <- covariate_identifier_G[1]
-  }
+  # Check whether individual confounder was excluded from model
+  # For 'houseprices', check first confounder 'purchasing_power'
+  #TODO
+  selection_confounder_identifier <- selection_identifier
+  selection_confounder_identifier[is.na(selection_confounder_identifier)] <- 0
+  selection_confounder_identifier <- selection_confounder_identifier[1]
+
 
   # Compute metrics of interest (see below) with test data.
   y_test <- data_test$y
