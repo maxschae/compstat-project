@@ -27,23 +27,16 @@ compute_metrics <- function(data, true_covariate_identifier, selection_method,
   X_train <- data.matrix(cbind(D_train, Z_train))
 
   # *Selection section*
-  # Select covariates according to the simple or double-selection method
-  if (selection_method=="simple") {
-    selection_identifier <- simple_select_covariates(y_train=y_train, X_train=X_train)
-  }
-  if (selection_method=="double") {
-    selection_identifier <- double_select_covariates(D_train=D_train,
-                                                     Z_train=Z_train,
-                                                     y_train=y_train,
-                                                     X_train=X_train)
-  }
+  # Select covariates according to the SIMPLE selection method
+  selection_method <- "simple"
+  selection_identifier_simple <- simple_select_covariates(y_train=y_train, X_train=X_train)
 
-  if (length(true_covariate_identifier) != length(selection_identifier)) {
+  if (length(true_covariate_identifier) != length(selection_identifier_simple)) {
     print("Warning: check how true_covariate_identifier vector is initialized in data_generating_process.R")
   }
   # Collect information which potential confounders were selected
   covariate_identifier <- data.frame(rbind(true_covariate_identifier,
-                                           selection_identifier))
+                                           selection_identifier_simple))
 
   names(covariate_identifier) <- colnames_covariates
   # Select confounders
@@ -71,43 +64,99 @@ compute_metrics <- function(data, true_covariate_identifier, selection_method,
 
 
   #TODO
-  tp_selection_rate_G <- tp_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
-  tn_selection_rate_G <- tn_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
-  fp_selection_rate_G <- fp_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
-  fn_selection_rate_G <- fn_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
+  tp_selection_rate_G_simple <- tp_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
+  tn_selection_rate_G_simple <- tn_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
+  fp_selection_rate_G_simple <- fp_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
+  fn_selection_rate_G_simple <- fn_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
 
 
   # Check whether individual confounder was excluded from model
   # For 'houseprices', check first confounder 'purchasing_power'
   #TODO
-  selection_confounder_identifier <- selection_identifier
+  selection_confounder_identifier <- selection_identifier_simple
   selection_confounder_identifier[is.na(selection_confounder_identifier)] <- 0
-  selection_confounder_identifier <- selection_confounder_identifier[1]
+  selection_confounder_identifier_simple <- selection_confounder_identifier[1]
 
 
-  # Compute metrics of interest (see below) with test data.
+  # Select covariates according to the DOUBLE selection method
+  selection_method <- "double"
+  selection_identifier_double <- double_select_covariates(D_train=D_train,
+                                                          Z_train=Z_train,
+                                                          y_train=y_train,
+                                                          X_train=X_train)
+
+  if (length(true_covariate_identifier) != length(selection_identifier_double)) {
+    print("Warning: check how true_covariate_identifier vector is initialized in data_generating_process.R")
+  }
+  # Collect information which potential confounders were selected
+  covariate_identifier <- data.frame(rbind(true_covariate_identifier,
+                                           selection_identifier_double))
+
+  names(covariate_identifier) <- colnames_covariates
+  # Select confounders
+  covariate_identifier_G <- covariate_identifier[colnames_confounders]
+  covariate_identifier_G[is.na(covariate_identifier_G)] <- 0  # work with zero
+
+  tp_selection_count_G <- sum((covariate_identifier_G[1,] == covariate_identifier_G[2,]) & (covariate_identifier_G[1,] == 0))
+  tn_selection_count_G <- sum((covariate_identifier_G[1,] == covariate_identifier_G[2,]) & (covariate_identifier_G[1,] != 0))
+  fp_selection_count_G <- sum((covariate_identifier_G[1,] != covariate_identifier_G[2,]) & (covariate_identifier_G[1,] != 0))
+  fn_selection_count_G <- sum((covariate_identifier_G[1,] != covariate_identifier_G[2,]) & (covariate_identifier_G[1,] == 0))
+  #TODO
+  tp_selection_rate_G_double <- tp_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
+  tn_selection_rate_G_double <- tn_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
+  fp_selection_rate_G_double <- fp_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
+  fn_selection_rate_G_double <- fn_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
+
+  # Check whether individual confounder was excluded from model
+  # For 'houseprices', check first confounder 'purchasing_power'
+  #TODO
+  selection_confounder_identifier <- selection_identifier_double
+  selection_confounder_identifier[is.na(selection_confounder_identifier)] <- 0
+  selection_confounder_identifier_double <- selection_confounder_identifier[1]
+
+
+
+  # Compute metrics of interest concerned with bias with test data.
   y_test <- data_test$y
   D_test <- data_test$D
-
   # Assemble different regressor matrices
   Z_test <- data.matrix(data_test[colnames_covariates])
 
-  Z_test_selected <- Z_test[, selection_identifier[!is.na(selection_identifier)]]
-  X_test_selected <- data.matrix(cbind(D_test, Z_test_selected))
 
+  # --- Compute metrics for SIMPLE selection
+  Z_test_selected_simple <- Z_test[, selection_identifier_simple[!is.na(selection_identifier_simple)]]
+  X_test_selected_simple <- data.matrix(cbind(D_test, Z_test_selected_simple))
   # Estimate treatment effect by OLS provided with selected covariates
-  lm_result <- lm(y_test ~ X_test_selected)
+  lm_result_simple <- lm(y_test ~ X_test_selected_simple)
   # Collect metrics of interest
-  confounder_bias <- lm_result$coefficients[2] - treatment_effect
-  test_MSE <- (1/length(lm_result$residuals)) * sum((lm_result$residuals)**2)
+  confounder_bias_simple <- lm_result_simple$coefficients[2] - treatment_effect
+  test_MSE_simple <- (1/length(lm_result_simple$residuals)) * sum((lm_result_simple$residuals)**2)
 
-  return(list(confounder_bias=confounder_bias,
-              test_MSE=test_MSE,
-              tp_selection_rate_G=tp_selection_rate_G,
-              tn_selection_rate_G=tn_selection_rate_G,
-              fp_selection_rate_G=fp_selection_rate_G,
-              fn_selection_rate_G=fn_selection_rate_G,
-              selection_confounder_identifier=selection_confounder_identifier))
+  # --- Compute metrics for DOUBLE selection
+  Z_test_selected_double <- Z_test[, selection_identifier_double[!is.na(selection_identifier_double)]]
+  X_test_selected_double <- data.matrix(cbind(D_test, Z_test_selected_double))
+  # Estimate treatment effect by OLS provided with selected covariates
+  lm_result_double <- lm(y_test ~ X_test_selected_double)
+  # Collect metrics of interest
+  confounder_bias_double <- lm_result_double$coefficients[2] - treatment_effect
+  test_MSE_double <- (1/length(lm_result_double$residuals)) * sum((lm_result_double$residuals)**2)
+
+
+
+  return(list(confounder_bias_simple=confounder_bias_simple,
+              test_MSE_simple=test_MSE_simple,
+              tp_selection_rate_G_simple=tp_selection_rate_G_simple,
+              tn_selection_rate_G_simple=tn_selection_rate_G_simple,
+              fp_selection_rate_G_simple=fp_selection_rate_G_simple,
+              fn_selection_rate_G_simple=fn_selection_rate_G_simple,
+              selection_confounder_identifier_simple=selection_confounder_identifier_simple,
+              confounder_bias_double=confounder_bias_double,
+              test_MSE_double=test_MSE_double,
+              tp_selection_rate_G_double=tp_selection_rate_G_double,
+              tn_selection_rate_G_double=tn_selection_rate_G_double,
+              fp_selection_rate_G_double=fp_selection_rate_G_double,
+              fn_selection_rate_G_double=fn_selection_rate_G_double,
+              selection_confounder_identifier_double=selection_confounder_identifier_double))
   # (*) Since variables (within a class like G or H) are
   # excluded from the true model at random, drawing *one* dataset which
   # is then split into train and test data ensures that the true association

@@ -66,10 +66,10 @@ variable_selection_rate_plot <- function(df, selection_method, subtitle="", xlab
 
   plot <- ggplot(data=df, aes(x=x_axis))
   plot <- plot +
-          geom_line(aes_string(y="tp_selection_rate_G"), size=1, col="blue", alpha=.9) +
-          geom_line(aes_string(y="tn_selection_rate_G"), size=1, col="blue", alpha=.5) +
-          geom_line(aes_string(y="fp_selection_rate_G"), size=1, col="red", alpha=.9) +
-          geom_line(aes_string(y="fn_selection_rate_G"), size=1, col="red", alpha=.5) +
+          geom_line(aes_string(y=str_c("tp_selection_rate_G_", selection_method)), size=1, col="blue", alpha=.9) +
+          geom_line(aes_string(y=str_c("tn_selection_rate_G_", selection_method)), size=1, col="blue", alpha=.5) +
+          geom_line(aes_string(y=str_c("fp_selection_rate_G_", selection_method)), size=1, col="red", alpha=.9) +
+          geom_line(aes_string(y=str_c("fn_selection_rate_G_", selection_method)), size=1, col="red", alpha=.5) +
           geom_line(aes(y=0), lty="dashed") +
           labs(title="TP, TN, FP, FN rates",
                      subtitle=subtitle,
@@ -89,9 +89,9 @@ confounding_bias_plot <- function(df, selection_method, subtitle="", xlab="", yl
 
   plot <- ggplot(data=df, aes(x=x_axis))
   plot <- plot +
-          geom_line(aes_string(y="root_mean_squared_bias"), size=1, col="#f5ce42", alpha=1) +
-          geom_line(aes_string(y="mean_abs_dev_bias"), size=1, col="red", alpha=.7) +
-          geom_line(aes_string(y="median_bias"), size=1, col="#bf42f5", alpha=1) +
+          geom_line(aes_string(y=str_c("root_mean_squared_bias_", selection_method)), size=1, col="#f5ce42", alpha=1) +
+          geom_line(aes_string(y=str_c("mean_abs_dev_bias_", selection_method)), size=1, col="red", alpha=.7) +
+          geom_line(aes_string(y=str_c("median_bias_", selection_method)), size=1, col="#bf42f5", alpha=1) +
           geom_line(aes(y=0), lty="dashed") +
           labs(title="Bias of Treatment Coefficient",
                      subtitle=subtitle,
@@ -137,11 +137,9 @@ sim_plot_wrapper <- function(dgp="A", R=10, iter_over=NaN, sim_parameter_vec=c(N
                              nonzero_controls=10,
                              ylim_select=NaN, ylim_bias=NaN) {
 
-  # Run the simulation varying over a parameter for the SIMPLE selection
-  selection_method <- "simple"
+  # Run the simulation varying over a parameter
   simulation_results <- simulation_wrapper(dgp=dgp, R=R, iter_over=iter_over,
                               sim_parameter_vec=sim_parameter_vec,
-                              selection_method=selection_method,
                               n=n, n_F_attr=n_F_attr,
                               n_G_attr=n_G_attr, n_H_attr=n_H_attr,
                               treatment_effect=treatment_effect,
@@ -150,91 +148,75 @@ sim_plot_wrapper <- function(dgp="A", R=10, iter_over=NaN, sim_parameter_vec=c(N
                               beta_F_size=beta_F_size,
                               beta_H_size=beta_H_size,
                               nonzero_controls=nonzero_controls)
-
-  root_mean_squared_bias <- simulation_results$root_mean_squared_bias_vec
-  mean_abs_dev_bias <- simulation_results$mean_abs_dev_bias_vec
-  median_bias <- simulation_results$median_bias_vec
-  tp_selection_rate_G <- simulation_results$tp_selection_rate_G_vec
-  tn_selection_rate_G <- simulation_results$tn_selection_rate_G_vec
-  fp_selection_rate_G <- simulation_results$fp_selection_rate_G_vec
-  fn_selection_rate_G <- simulation_results$fn_selection_rate_G_vec
-  selection_confounder_identifier <- simulation_results$selection_confounder_identifier_vec
+  # SIMPLE
+  root_mean_squared_bias_simple <- simulation_results$root_mean_squared_bias_vec_simple
+  mean_abs_dev_bias_simple <- simulation_results$mean_abs_dev_bias_vec_simple
+  median_bias_simple <- simulation_results$median_bias_vec_simple
+  tp_selection_rate_G_simple <- simulation_results$tp_selection_rate_G_vec_simple
+  tn_selection_rate_G_simple <- simulation_results$tn_selection_rate_G_vec_simple
+  fp_selection_rate_G_simple <- simulation_results$fp_selection_rate_G_vec_simple
+  fn_selection_rate_G_simple <- simulation_results$fn_selection_rate_G_vec_simple
+  selection_confounder_identifier_simple <- simulation_results$selection_confounder_identifier_vec_simple
 
   # Construct the plots for the simple selection
   x_axis <- sim_parameter_vec
   # Metrics --- variable selection
   df <- data.frame(cbind(x_axis,
-                         tp_selection_rate_G, tn_selection_rate_G,
-                         fp_selection_rate_G, fn_selection_rate_G))
+                         tp_selection_rate_G_simple, tn_selection_rate_G_simple,
+                         fp_selection_rate_G_simple, fn_selection_rate_G_simple))
   # Plot
   p_variable_select_simple <- variable_selection_rate_plot(df=df,
-                                        selection_method=selection_method,
-                                        subtitle=str_c(selection_method, "-selection"),
+                                        selection_method="simple",
+                                        subtitle="simple-selection",
                                         xlab=iter_over, ylim=ylim_select)
 
   # Show exclusion rate of particular confounder, default: 'purchasing power'
-  df <- data.frame(cbind(x_axis, selection_confounder_identifier))
+  df <- data.frame(cbind(x_axis, selection_confounder_identifier_simple))
   p_purchasing_power_exclusion_simple <- purchasing_power_exclusion_plot(df=df,
-                                            subtitle=str_c(selection_method, "-selection"),
+                                            subtitle="simple-selection",
                                             xlab=iter_over, ylim=c(-.1, 1.1))
 
   # Metrics --- confounder bias
-  df <- data.frame(cbind(x_axis, root_mean_squared_bias, mean_abs_dev_bias, median_bias))
+  df <- data.frame(cbind(x_axis, root_mean_squared_bias_simple, mean_abs_dev_bias_simple, median_bias_simple))
   # Plot
   p_confounder_bias_simple <- confounding_bias_plot(df=df,
-                                        selection_method=selection_method,
-                                        subtitle=str_c(selection_method, "-selection"),
+                                        selection_method="simple",
+                                        subtitle="simple-selection",
                                         xlab=iter_over, ylim=ylim_bias)
 
 
+  # DOUBLE
+  root_mean_squared_bias_double <- simulation_results$root_mean_squared_bias_vec_double
+  mean_abs_dev_bias_double <- simulation_results$mean_abs_dev_bias_vec_double
+  median_bias_double <- simulation_results$median_bias_vec_double
+  tp_selection_rate_G_double <- simulation_results$tp_selection_rate_G_vec_double
+  tn_selection_rate_G_double <- simulation_results$tn_selection_rate_G_vec_double
+  fp_selection_rate_G_double <- simulation_results$fp_selection_rate_G_vec_double
+  fn_selection_rate_G_double <- simulation_results$fn_selection_rate_G_vec_double
+  selection_confounder_identifier_double <- simulation_results$selection_confounder_identifier_vec_double
 
-  # Run the simulation varying over a parameter for the DOUBLE selection
-  selection_method <- "double"
-  simulation_results <- simulation_wrapper(dgp=dgp, R=R, iter_over=iter_over,
-                              sim_parameter_vec=sim_parameter_vec,
-                              selection_method=selection_method,
-                              n=n, n_F_attr=n_F_attr,
-                              n_G_attr=n_G_attr, n_H_attr=n_H_attr,
-                              treatment_effect=treatment_effect,
-                              beta_GD_size=beta_GD_size,
-                              beta_GY_size=beta_GY_size,
-                              beta_F_size=beta_F_size,
-                              beta_H_size=beta_H_size,
-                              nonzero_controls=nonzero_controls)
-
-  root_mean_squared_bias <- simulation_results$root_mean_squared_bias_vec
-  mean_abs_dev_bias <- simulation_results$mean_abs_dev_bias_vec
-  median_bias <- simulation_results$median_bias_vec
-  tp_selection_rate_G <- simulation_results$tp_selection_rate_G_vec
-  tn_selection_rate_G <- simulation_results$tn_selection_rate_G_vec
-  fp_selection_rate_G <- simulation_results$fp_selection_rate_G_vec
-  fn_selection_rate_G <- simulation_results$fn_selection_rate_G_vec
-  selection_confounder_identifier <- simulation_results$selection_confounder_identifier_vec
-
-  # Construct the plots for the double selection
-  x_axis <- sim_parameter_vec
   # Metrics --- variable selection
   df <- data.frame(cbind(x_axis,
-                         tp_selection_rate_G, tn_selection_rate_G,
-                         fp_selection_rate_G, fn_selection_rate_G))
+                         tp_selection_rate_G_double, tn_selection_rate_G_double,
+                         fp_selection_rate_G_double, fn_selection_rate_G_double))
   # Plot
   p_variable_select_double <- variable_selection_rate_plot(df=df,
-                                        selection_method=selection_method,
-                                        subtitle=str_c(selection_method, "-selection"),
+                                        selection_method="double",
+                                        subtitle="double-selection",
                                         xlab=iter_over, ylim=ylim_select)
 
   # Show exclusion rate of particular confounder, default: 'purchasing power'
-  df <- data.frame(cbind(x_axis, selection_confounder_identifier))
+  df <- data.frame(cbind(x_axis, selection_confounder_identifier_double))
   p_purchasing_power_exclusion_double <- purchasing_power_exclusion_plot(df=df,
-                                            subtitle=str_c(selection_method, "-selection"),
+                                            subtitle="double-selection",
                                             xlab=iter_over, ylim=c(-.1, 1.1))
 
   # Metrics --- confounder bias
-  df <- data.frame(cbind(x_axis, root_mean_squared_bias, mean_abs_dev_bias, median_bias))
+  df <- data.frame(cbind(x_axis, root_mean_squared_bias_double, mean_abs_dev_bias_double, median_bias_double))
   # Plot
   p_confounder_bias_double <- confounding_bias_plot(df=df,
-                                        selection_method=selection_method,
-                                        subtitle=str_c(selection_method, "-selection"),
+                                        selection_method="double",
+                                        subtitle="double-selection",
                                         xlab=iter_over, ylim=ylim_bias)
 
   return(list(p_variable_select_simple=p_variable_select_simple,
@@ -377,10 +359,8 @@ produce_bias_hist <- function(dgp, R, n, n_F_attr, n_G_attr, n_H_attr,
                               binwidth=.04, title="",
                               xlim=c(-.4, .4), ylim=c(0, 10)) {
 
-  selection_method <- "simple"
   simulation_results <- simulation_wrapper(dgp=dgp, R=R, iter_over=NaN,
                                            sim_parameter_vec=rep(NA, 3),
-                                           selection_method=selection_method,
                                            n=n,
                                            n_F_attr=n_F_attr, n_G_attr=n_G_attr,
                                            n_H_attr=n_H_attr,
@@ -391,28 +371,13 @@ produce_bias_hist <- function(dgp, R, n, n_F_attr, n_G_attr, n_H_attr,
                                            beta_H_size=beta_H_size,
                                            nonzero_controls=nonzero_controls)
 
-  confounder_bias_vec_simple <- simulation_results$confounder_bias_vec
-  tp_selection_rate_G_simple <- simulation_results$tp_selection_rate_G_vec
-  fp_selection_rate_G_simple <- simulation_results$fp_selection_rate_G_vec
+  confounder_bias_vec_simple <- simulation_results$confounder_bias_vec_simple
+  tp_selection_rate_G_simple <- simulation_results$tp_selection_rate_G_vec_simple
+  fp_selection_rate_G_simple <- simulation_results$fp_selection_rate_G_vec_simple
 
-
-  selection_method <- "double"
-  simulation_results <- simulation_wrapper(dgp=dgp, R=R, iter_over=NaN,
-                                           sim_parameter_vec=rep(NA, 3),
-                                           selection_method=selection_method,
-                                           n=n,
-                                           n_F_attr=n_F_attr, n_G_attr=n_G_attr,
-                                           n_H_attr=n_H_attr,
-                                           treatment_effect=treatment_effect,
-                                           beta_GD_size=beta_GD_size,
-                                           beta_GY_size=beta_GY_size,
-                                           beta_F_size=beta_F_size,
-                                           beta_H_size=beta_H_size,
-                                           nonzero_controls=nonzero_controls)
-
-  confounder_bias_vec_double <- simulation_results$confounder_bias_vec
-  tp_selection_rate_G_double <- simulation_results$tp_selection_rate_G_vec
-  fp_selection_rate_G_double <- simulation_results$fp_selection_rate_G_vec
+  confounder_bias_vec_double <- simulation_results$confounder_bias_vec_double
+  tp_selection_rate_G_double <- simulation_results$tp_selection_rate_G_vec_double
+  fp_selection_rate_G_double <- simulation_results$fp_selection_rate_G_vec_double
 
 
   df <- data.frame(confounder_bias_vec_simple)

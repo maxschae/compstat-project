@@ -3,7 +3,6 @@
 
 # Wrapper for simulation function
 simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
-                               selection_method,
                                n, n_F_attr, n_G_attr, n_H_attr, corr_G=0,
                                treatment_effect, beta_GD_size,
                                beta_GY_size, beta_F_size, beta_H_size,
@@ -30,14 +29,22 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
   # Simulation with R runs WITHOUT varying over a parameter.
   if (is.na(iter_over) == TRUE) {
 
-    # Initialize containers
-    confounder_bias_vec <- rep(NA, R)
-    test_MSE_vec <- rep(NA, R)
-    tp_selection_rate_G_vec <- rep(NA, R)
-    tn_selection_rate_G_vec <- rep(NA, R)
-    fp_selection_rate_G_vec <- rep(NA, R)
-    fn_selection_rate_G_vec <- rep(NA, R)
-    selection_confounder_identifier_vec <- rep(NA, R)
+    # Initialize containers --- SIMPLE
+    confounder_bias_vec_simple <- rep(NA, R)
+    test_MSE_vec_simple <- rep(NA, R)
+    tp_selection_rate_G_vec_simple <- rep(NA, R)
+    tn_selection_rate_G_vec_simple <- rep(NA, R)
+    fp_selection_rate_G_vec_simple <- rep(NA, R)
+    fn_selection_rate_G_vec_simple <- rep(NA, R)
+    selection_confounder_identifier_vec_simple <- rep(NA, R)
+    # --- DOUBLE
+    confounder_bias_vec_double <- rep(NA, R)
+    test_MSE_vec_double <- rep(NA, R)
+    tp_selection_rate_G_vec_double <- rep(NA, R)
+    tn_selection_rate_G_vec_double <- rep(NA, R)
+    fp_selection_rate_G_vec_double <- rep(NA, R)
+    fn_selection_rate_G_vec_double <- rep(NA, R)
+    selection_confounder_identifier_vec_double <- rep(NA, R)
 
     for (i in 1:R) {
       if (dgp == "A") {
@@ -73,31 +80,47 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
 
       simulation_results <- compute_metrics(data=data,
                                             true_covariate_identifier=true_covariate_identifier,
-                                            selection_method=selection_method,
                                             colnames_covariates=colnames_covariates,
                                             colnames_confounders=colnames_confounders,
                                             treatment_effect=treatment_effect)
 
-      # Metrics --- confounder bias
-      confounder_bias_vec[i] <- simulation_results$confounder_bias
-      # Metrics --- prediction
-      test_MSE_vec[i] <- simulation_results$test_MSE
-      # Metrics --- variable selection
-      tp_selection_rate_G_vec[i] <- simulation_results$tp_selection_rate_G
-      tn_selection_rate_G_vec[i] <- simulation_results$tn_selection_rate_G
-      fp_selection_rate_G_vec[i] <- simulation_results$fp_selection_rate_G
-      fn_selection_rate_G_vec[i] <- simulation_results$fn_selection_rate_G
+      # Metrics SIMPLE --- confounder bias
+      confounder_bias_vec_simple[i] <- simulation_results$confounder_bias_simple
+      # Metrics SIMPLE --- prediction
+      test_MSE_vec_simple[i] <- simulation_results$test_MSE_simple
+      # Metrics SIMPLE --- variable selection
+      tp_selection_rate_G_vec_simple[i] <- simulation_results$tp_selection_rate_G_simple
+      tn_selection_rate_G_vec_simple[i] <- simulation_results$tn_selection_rate_G_simple
+      fp_selection_rate_G_vec_simple[i] <- simulation_results$fp_selection_rate_G_simple
+      fn_selection_rate_G_vec_simple[i] <- simulation_results$fn_selection_rate_G_simple
+      selection_confounder_identifier_vec_simple[i] <- simulation_results$selection_confounder_identifier_simple
 
-      selection_confounder_identifier_vec[i] <- simulation_results$selection_confounder_identifier
+      # Metrics DOUBLE --- confounder bias
+      confounder_bias_vec_double[i] <- simulation_results$confounder_bias_double
+      # Metrics DOUBLE --- prediction
+      test_MSE_vec_double[i] <- simulation_results$test_MSE_double
+      # Metrics DOUBLE --- variable selection
+      tp_selection_rate_G_vec_double[i] <- simulation_results$tp_selection_rate_G_double
+      tn_selection_rate_G_vec_double[i] <- simulation_results$tn_selection_rate_G_double
+      fp_selection_rate_G_vec_double[i] <- simulation_results$fp_selection_rate_G_double
+      fn_selection_rate_G_vec_double[i] <- simulation_results$fn_selection_rate_G_double
+      selection_confounder_identifier_vec_double[i] <- simulation_results$selection_confounder_identifier_double
     }
 
-    return(list(confounder_bias_vec=confounder_bias_vec,
-                test_MSE_vec=test_MSE_vec,
-                tp_selection_rate_G_vec=tp_selection_rate_G_vec,
-                tn_selection_rate_G_vec=tn_selection_rate_G_vec,
-                fp_selection_rate_G_vec=fp_selection_rate_G_vec,
-                fn_selection_rate_G_vec=fn_selection_rate_G_vec,
-                selection_confounder_identifier_vec=selection_confounder_identifier_vec))
+    return(list(confounder_bias_vec_simple=confounder_bias_vec_simple,
+                test_MSE_vec_simple=test_MSE_vec_simple,
+                tp_selection_rate_G_vec_simple=tp_selection_rate_G_vec_simple,
+                tn_selection_rate_G_vec_simple=tn_selection_rate_G_vec_simple,
+                fp_selection_rate_G_vec_simple=fp_selection_rate_G_vec_simple,
+                fn_selection_rate_G_vec_simple=fn_selection_rate_G_vec_simple,
+                selection_confounder_identifier_vec_simple=selection_confounder_identifier_vec_simple,
+                confounder_bias_vec_double=confounder_bias_vec_double,
+                test_MSE_vec_double=test_MSE_vec_double,
+                tp_selection_rate_G_vec_double=tp_selection_rate_G_vec_double,
+                tn_selection_rate_G_vec_double=tn_selection_rate_G_vec_double,
+                fp_selection_rate_G_vec_double=fp_selection_rate_G_vec_double,
+                fn_selection_rate_G_vec_double=fn_selection_rate_G_vec_double,
+                selection_confounder_identifier_vec_double=selection_confounder_identifier_vec_double))
   }
 
 
@@ -105,17 +128,26 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
   # Simulation with R runs WHILE varying over a parameter.
   if (is.na(iter_over) == FALSE) {
 
-    # Initialize containers
-    root_mean_squared_bias_vec <- rep(NA, length(sim_parameter_vec))
-    mean_abs_dev_bias_vec <- rep(NA, length(sim_parameter_vec))
-    median_bias_vec <- rep(NA, length(sim_parameter_vec))
-    mean_test_MSE_vec <- rep(NA, length(sim_parameter_vec))
-    tp_selection_rate_G_vec <- rep(NA, length(sim_parameter_vec))
-    tn_selection_rate_G_vec <- rep(NA, length(sim_parameter_vec))
-    fp_selection_rate_G_vec <- rep(NA, length(sim_parameter_vec))
-    fn_selection_rate_G_vec <- rep(NA, length(sim_parameter_vec))
-
-    selection_confounder_identifier_vec <- rep(NA, length(sim_parameter_vec))
+    # Initialize containers --- SIMPLE
+    root_mean_squared_bias_vec_simple <- rep(NA, length(sim_parameter_vec))
+    mean_abs_dev_bias_vec_simple <- rep(NA, length(sim_parameter_vec))
+    median_bias_vec_simple <- rep(NA, length(sim_parameter_vec))
+    mean_test_MSE_vec_simple <- rep(NA, length(sim_parameter_vec))
+    tp_selection_rate_G_vec_simple <- rep(NA, length(sim_parameter_vec))
+    tn_selection_rate_G_vec_simple <- rep(NA, length(sim_parameter_vec))
+    fp_selection_rate_G_vec_simple <- rep(NA, length(sim_parameter_vec))
+    fn_selection_rate_G_vec_simple <- rep(NA, length(sim_parameter_vec))
+    selection_confounder_identifier_vec_simple <- rep(NA, length(sim_parameter_vec))
+    # --- DOUBLE
+    root_mean_squared_bias_vec_double <- rep(NA, length(sim_parameter_vec))
+    mean_abs_dev_bias_vec_double <- rep(NA, length(sim_parameter_vec))
+    median_bias_vec_double <- rep(NA, length(sim_parameter_vec))
+    mean_test_MSE_vec_double <- rep(NA, length(sim_parameter_vec))
+    tp_selection_rate_G_vec_double <- rep(NA, length(sim_parameter_vec))
+    tn_selection_rate_G_vec_double <- rep(NA, length(sim_parameter_vec))
+    fp_selection_rate_G_vec_double <- rep(NA, length(sim_parameter_vec))
+    fn_selection_rate_G_vec_double <- rep(NA, length(sim_parameter_vec))
+    selection_confounder_identifier_vec_double <- rep(NA, length(sim_parameter_vec))
 
 
 
@@ -151,7 +183,6 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
 
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
-                                              selection_method=selection_method,
                                               colnames_covariates=colnames_covariates,
                                               colnames_confounders=colnames_confounders,
                                               treatment_effect=treatment_effect))
@@ -192,7 +223,6 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
 
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
-                                              selection_method=selection_method,
                                               colnames_covariates=colnames_covariates,
                                               colnames_confounders=colnames_confounders,
                                               treatment_effect=treatment_effect))
@@ -227,7 +257,6 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
         }
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
-                                              selection_method=selection_method,
                                               colnames_covariates=colnames_covariates,
                                               colnames_confounders=colnames_confounders,
                                               treatment_effect=treatment_effect))
@@ -269,7 +298,6 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
 
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
-                                              selection_method=selection_method,
                                               colnames_covariates=colnames_covariates,
                                               colnames_confounders=colnames_confounders,
                                               treatment_effect=treatment_effect))
@@ -301,7 +329,6 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
         }
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
-                                              selection_method=selection_method,
                                               colnames_covariates=colnames_covariates,
                                               colnames_confounders=colnames_confounders,
                                               treatment_effect=treatment_effect))
@@ -327,7 +354,6 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
         }
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
-                                              selection_method=selection_method,
                                               colnames_covariates=colnames_covariates,
                                               colnames_confounders=colnames_confounders,
                                               treatment_effect=treatment_effect))
@@ -335,7 +361,6 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
       if (iter_over=="corr_confounders") {
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
-                                              selection_method=selection_method,
                                               colnames_covariates=colnames_covariates,
                                               colnames_confounders=colnames_confounders,
                                               treatment_effect=treatment_effect))
@@ -343,25 +368,37 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
       if (iter_over=="treatment_effect") {
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
-                                              selection_method=selection_method,
                                               colnames_covariates=colnames_covariates,
                                               colnames_confounders=colnames_confounders,
                                               treatment_effect=treatment_effect))
       }
 
-      # Metrics --- confounder bias
-      root_mean_squared_bias_vec[i] <- sqrt(mean((unlist(sim_results_vec[1, 1:R]))**2))
-      mean_abs_dev_bias_vec[i] <- mean(abs(unlist(sim_results_vec[1, 1:R])))
-      median_bias_vec[i] <- median(unlist(sim_results_vec[1, 1:R]))
-      # Metrics --- prediction
-      mean_test_MSE_vec[i] <- mean(unlist(sim_results_vec[2, 1:R]))
-      # Metrics --- variable selection
-      tp_selection_rate_G_vec[i] <- mean(unlist(sim_results_vec[3, 1:R]))
-      tn_selection_rate_G_vec[i] <- mean(unlist(sim_results_vec[4, 1:R]))
-      fp_selection_rate_G_vec[i] <- mean(unlist(sim_results_vec[5, 1:R]))
-      fn_selection_rate_G_vec[i] <- mean(unlist(sim_results_vec[6, 1:R]))
+      # Metrics SIMPLE --- confounder bias
+      root_mean_squared_bias_vec_simple[i] <- sqrt(mean((unlist(sim_results_vec[1, 1:R]))**2))
+      mean_abs_dev_bias_vec_simple[i] <- mean(abs(unlist(sim_results_vec[1, 1:R])))
+      median_bias_vec_simple[i] <- median(unlist(sim_results_vec[1, 1:R]))
+      # Metrics SIMPLE --- prediction
+      mean_test_MSE_vec_simple[i] <- mean(unlist(sim_results_vec[2, 1:R]))
+      # Metrics SIMPLE --- variable selection
+      tp_selection_rate_G_vec_simple[i] <- mean(unlist(sim_results_vec[3, 1:R]))
+      tn_selection_rate_G_vec_simple[i] <- mean(unlist(sim_results_vec[4, 1:R]))
+      fp_selection_rate_G_vec_simple[i] <- mean(unlist(sim_results_vec[5, 1:R]))
+      fn_selection_rate_G_vec_simple[i] <- mean(unlist(sim_results_vec[6, 1:R]))
+      selection_confounder_identifier_vec_simple[i] <- mean(unlist(sim_results_vec[7, 1:R]))
 
-      selection_confounder_identifier_vec[i] <- mean(unlist(sim_results_vec[7, 1:R]))
+      # Metrics DOUBLE --- confounder bias
+      root_mean_squared_bias_vec_double[i] <- sqrt(mean((unlist(sim_results_vec[8, 1:R]))**2))
+      mean_abs_dev_bias_vec_double[i] <- mean(abs(unlist(sim_results_vec[8, 1:R])))
+      median_bias_vec_double[i] <- median(unlist(sim_results_vec[8, 1:R]))
+      # Metrics DOUBLE --- prediction
+      mean_test_MSE_vec_double[i] <- mean(unlist(sim_results_vec[9, 1:R]))
+      # Metrics DOUBLE --- variable selection
+      tp_selection_rate_G_vec_double[i] <- mean(unlist(sim_results_vec[10, 1:R]))
+      tn_selection_rate_G_vec_double[i] <- mean(unlist(sim_results_vec[11, 1:R]))
+      fp_selection_rate_G_vec_double[i] <- mean(unlist(sim_results_vec[12, 1:R]))
+      fn_selection_rate_G_vec_double[i] <- mean(unlist(sim_results_vec[13, 1:R]))
+      selection_confounder_identifier_vec_double[i] <- mean(unlist(sim_results_vec[14, 1:R]))
+
 
       end_time <- Sys.time()
       if (i == 1) {
@@ -370,14 +407,23 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
       }
       i <- i+1
     }
-    return(list(root_mean_squared_bias_vec=root_mean_squared_bias_vec,
-                mean_abs_dev_bias_vec=mean_abs_dev_bias_vec,
-                median_bias_vec=median_bias_vec,
-                mean_test_MSE_vec=mean_test_MSE_vec,
-                tp_selection_rate_G_vec=tp_selection_rate_G_vec,
-                tn_selection_rate_G_vec=tn_selection_rate_G_vec,
-                fp_selection_rate_G_vec=fp_selection_rate_G_vec,
-                fn_selection_rate_G_vec=fn_selection_rate_G_vec,
-                selection_confounder_identifier_vec=selection_confounder_identifier_vec))
+    return(list(root_mean_squared_bias_vec_simple=root_mean_squared_bias_vec_simple,
+                mean_abs_dev_bias_vec_simple=mean_abs_dev_bias_vec_simple,
+                median_bias_vec_simple=median_bias_vec_simple,
+                mean_test_MSE_vec_simple=mean_test_MSE_vec_simple,
+                tp_selection_rate_G_vec_simple=tp_selection_rate_G_vec_simple,
+                tn_selection_rate_G_vec_simple=tn_selection_rate_G_vec_simple,
+                fp_selection_rate_G_vec_simple=fp_selection_rate_G_vec_simple,
+                fn_selection_rate_G_vec_simple=fn_selection_rate_G_vec_simple,
+                selection_confounder_identifier_vec_simple=selection_confounder_identifier_vec_simple,
+                root_mean_squared_bias_vec_double=root_mean_squared_bias_vec_double,
+                mean_abs_dev_bias_vec_double=mean_abs_dev_bias_vec_double,
+                median_bias_vec_double=median_bias_vec_double,
+                mean_test_MSE_vec_double=mean_test_MSE_vec_double,
+                tp_selection_rate_G_vec_double=tp_selection_rate_G_vec_double,
+                tn_selection_rate_G_vec_double=tn_selection_rate_G_vec_double,
+                fp_selection_rate_G_vec_double=fp_selection_rate_G_vec_double,
+                fn_selection_rate_G_vec_double=fn_selection_rate_G_vec_double,
+                selection_confounder_identifier_vec_double=selection_confounder_identifier_vec_double))
   }
 }
