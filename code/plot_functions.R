@@ -1,7 +1,7 @@
 ### CompStat project --- Max Schäfer
 
 
-lasso_coef_shrink_plot <- function(df, lambda_min=NaN, figure_name="", title="") {
+lasso_coef_shrink_plot <- function(df, lambda_grid, lambda_min=NaN, figure_name="", title="") {
   # Plot all lasso coefficients for a grid of lambda values
   # Distinguish between zero and non-zero effect controls
 
@@ -44,7 +44,7 @@ lasso_coef_shrink_plot <- function(df, lambda_min=NaN, figure_name="", title="")
           ggtitle(figure_name, subtitle=title) +
           ylab("Coefficient Value") +
           xlab("Lambda") +
-          theme_grey(base_size=15)
+          theme_grey(base_size=15) #theme_bw(base_size=15)
 
   if (is.na(lambda_min) == FALSE) {
     plot <- plot + geom_vline(xintercept=lambda_min, linetype="dashed",
@@ -112,7 +112,7 @@ purchasing_power_exclusion_plot <- function(df, selection_method, subtitle="", x
 
   plot <- ggplot(data=df, aes(x=x_axis))
   plot <- plot +
-          geom_line(aes_string(y="selection_confounder_identifier"), size=1, col="red", alpha=1) +
+          geom_line(aes_string(y=str_c("selection_confounder_identifier_", selection_method)), size=1, col="red", alpha=1) +
           geom_line(aes(y=0), lty="dashed") +
           labs(title="Selection of the Confounder 'Purchasing Power'",
                      subtitle=subtitle,
@@ -173,6 +173,7 @@ sim_plot_wrapper <- function(dgp="A", R=10, iter_over=NaN, sim_parameter_vec=c(N
   # Show exclusion rate of particular confounder, default: 'purchasing power'
   df <- data.frame(cbind(x_axis, selection_confounder_identifier_simple))
   p_purchasing_power_exclusion_simple <- purchasing_power_exclusion_plot(df=df,
+                                            selection_method="simple",
                                             subtitle="simple-selection",
                                             xlab=iter_over, ylim=c(-.1, 1.1))
 
@@ -208,6 +209,7 @@ sim_plot_wrapper <- function(dgp="A", R=10, iter_over=NaN, sim_parameter_vec=c(N
   # Show exclusion rate of particular confounder, default: 'purchasing power'
   df <- data.frame(cbind(x_axis, selection_confounder_identifier_double))
   p_purchasing_power_exclusion_double <- purchasing_power_exclusion_plot(df=df,
+                                            selection_method="double",
                                             subtitle="double-selection",
                                             xlab=iter_over, ylim=c(-.1, 1.1))
 
@@ -244,7 +246,7 @@ produce_lasso_coef_shrink_plot <- function(dgp="A", n=400, n_F_attr=NaN, n_G_att
 
   if (dgp == "A") {
     colnames_covariates <- str_c(rep("G_", n_G_attr), seq(from=1, to=n_G_attr, by=1))
-    colnumbers_covariates <- seq(from=1, to=n_G_attr, by=1)
+    #colnumbers_covariates <- seq(from=1, to=n_G_attr, by=1) #TODO delete
     # Draw dataset which is then split into training and test
     data_set <- generate_data_A(n=n,
                                 n_G_attr=n_G_attr,
@@ -258,7 +260,7 @@ produce_lasso_coef_shrink_plot <- function(dgp="A", n=400, n_F_attr=NaN, n_G_att
                              str_c(rep("G_", n_G_attr), seq(from=1, to=n_G_attr, by=1)),
                              str_c(rep("H_", n_H_attr), seq(from=1, to=n_H_attr, by=1)))
 
-    colnumbers_covariates <- seq(from=1, to=(n_F_attr + n_G_attr + n_H_attr), by=1)
+    #colnumbers_covariates <- seq(from=1, to=(n_F_attr + n_G_attr + n_H_attr), by=1) #TODO
     # Draw dataset which is then split into training and test
     data_set <- generate_data_B(n=n,
                                 n_F_attr=n_F_attr,
@@ -272,11 +274,19 @@ produce_lasso_coef_shrink_plot <- function(dgp="A", n=400, n_F_attr=NaN, n_G_att
                                 nonzero_controls=nonzero_controls)
   }
   if (dgp == "houseprices") {
-    colnames_covariates <- str_c(rep("G_", n_G_attr), seq(from=1, to=n_G_attr, by=1))
-    colnumbers_covariates <- seq(from=1, to=n_G_attr, by=1)
+    #colnames_covariates <- str_c(rep("G_", n_G_attr), seq(from=1, to=n_G_attr, by=1))
+    #colnumbers_covariates <- seq(from=1, to=n_G_attr, by=1) #TODO
     # Draw dataset which is then split into training and test
-    data_set <- generate_data_houseprices_dgp0(n=n, n_G_attr=n_G_attr, corr_G=0,
-                                               treatment_effect=-7, beta_GY_inflator=1)
+    #data_set <- generate_data_houseprices_dgp0(n=n, n_G_attr=n_G_attr, corr_G=0,
+    #                                           treatment_effect=-7, beta_GY_inflator=1)
+
+    colnames_covariates <- c(str_c(rep("G_", n_G_attr), seq(from=1, to=n_G_attr, by=1)),
+                             str_c(rep("H_", n_H_attr), seq(from=1, to=n_H_attr, by=1)),
+                             str_c(rep("F_", n_F_attr), seq(from=1, to=n_F_attr, by=1)))
+
+    data_set <- generate_data_houseprices(n=n,
+                                          n_F_attr=n_F_attr, n_G_attr=n_G_attr, n_H_attr=n_H_attr,
+                                          beta_GY_inflator=beta_GY_size)
   }
 
 
@@ -313,12 +323,8 @@ produce_lasso_coef_shrink_plot <- function(dgp="A", n=400, n_F_attr=NaN, n_G_att
 
   # Variable selection in "first" and "second" stage
 
-  # Grid of lasso penalties
-  lambda_grid <- lambda_grid
-
   # 1. Use Lasso to shrink/select covariates given their association with outcome Y
   lasso_one <- glmnet(X_train, y_train, alpha=1, lambda=lambda_grid, intercept=FALSE)
-
   # 2. Use Lasso to shrink/select covariates given their association with tratment D
   lasso_two <- glmnet(Z_train, D_train, alpha=1, lambda=lambda_grid, intercept=FALSE)
 
@@ -328,24 +334,26 @@ produce_lasso_coef_shrink_plot <- function(dgp="A", n=400, n_F_attr=NaN, n_G_att
 
 
   # MSE-optimal penalty term for lasso
-  lasso_one_cv <- cv.glmnet(X_train, y_train, alpha=1, intercept=FALSE,
+  lasso_one_cv <- cv.glmnet(X_train, y_train, alpha=1, lambda=lambda_grid, intercept=FALSE,
                             type.measure="mse", nfolds=10)
   lambda_min_one <- lasso_one_cv$lambda.min
 
-  lasso_two_cv <- cv.glmnet(Z_train, D_train, alpha=1, intercept=FALSE,
+  lasso_two_cv <- cv.glmnet(Z_train, D_train, alpha=1, lambda=lambda_grid, intercept=FALSE,
                             type.measure="mse", nfolds=10)
   lambda_min_two <- lasso_two_cv$lambda.min
 
   # 1.
   df <- data.frame(cbind(beta_hats_lasso_one, lambda_grid))
   names(df) <- colnames_one_effect
-  p1 <- lasso_coef_shrink_plot(df=df, lambda_min=lambda_min_one, figure_name="", title=str_c("LASSO regression of y on X", title))
+  p1 <- lasso_coef_shrink_plot(df=df, lambda_grid=lambda_grid, lambda_min=lambda_min_one,
+                               figure_name="", title=str_c("LASSO regression of y on X", title))
 
 
   # 2.
   df <- data.frame(cbind(beta_hats_lasso_two, lambda_grid))
   names(df) <- colnames_two_effect
-  p2 <- lasso_coef_shrink_plot(df=df, lambda_min=lambda_min_two, title=str_c("LASSO regression of D on X", title))
+  p2 <- lasso_coef_shrink_plot(df=df, lambda_grid=lambda_grid, lambda_min=lambda_min_two,
+                               title=str_c("LASSO regression of D on X", title))
 
   return(list(p1=p1, p2=p2))
 }

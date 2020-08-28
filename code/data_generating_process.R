@@ -215,17 +215,16 @@ generate_data_houseprices <- function(n=200, n_F_attr=100, n_G_attr=100, n_H_att
   c <- .01*175000
   treatment_effect <- beta_DY*c
   beta_GY <- beta_GY * beta_GY_inflator
-  
+
   y <- -1200000 + D %*% treatment_effect + G %*% beta_GY*c + H %*% beta_H*c + H_5d %*% beta_H5d*c + eps_Y
 
 
 
   # Construct geographical features and house attributes
   # which do not explain anything
-  #zero_coefs <- n_F_attr + n_G_attr + n_H_attr - dim(H)[2] - dim(H_5d)[2] - dim(G)[2] - dim(F)[2]
+  n_F_attr_zero <- n_F_attr - dim(F)[2]
   n_G_attr_zero <- n_G_attr - dim(G)[2]
   n_H_attr_zero <- n_H_attr - dim(H)[2] - dim(H_5d)[2]
-  n_F_attr_zero <- n_F_attr - dim(F)[2]
 
   # Specify variance-covariance matrix
   correlation_term <- 0
@@ -238,15 +237,14 @@ generate_data_houseprices <- function(n=200, n_F_attr=100, n_G_attr=100, n_H_att
     sigma_G_zero[, j] <- 100*sigma_G_zero[, j]**abs(a)
   }
 
-  #sigma_F <- diag(rep(1, n_F_attr_zero))
+  sigma_F_zero <- diag(rep(100, n_F_attr_zero))
   diag(sigma_G_zero) <- rep(100, n_G_attr_zero)
   sigma_H_zero <- diag(rep(100, n_H_attr_zero))
-  sigma_F_zero <- diag(rep(100, n_F_attr_zero))
 
   # Draw potential controls from multivariate normal distribution.
+  F_zero <- rmvnorm(n=n, mean=rep(0, n_F_attr_zero), sigma=sigma_F_zero)
   G_zero <- rmvnorm(n=n, mean=rep(0, n_G_attr_zero), sigma=sigma_G_zero)
   H_zero <- rmvnorm(n=n, mean=rep(0, n_H_attr_zero), sigma=sigma_H_zero)
-  F_zero <- rmvnorm(n=n, mean=rep(0, n_F_attr_zero), sigma=sigma_F_zero)
 
 
   # Alternatives
@@ -256,30 +254,28 @@ generate_data_houseprices <- function(n=200, n_F_attr=100, n_G_attr=100, n_H_att
   #G_2 <- abs(rbeta(n=n, 3, 50) * 50000 - 1000) + 1
   #G_4 <- abs(rbeta(n=n, 2, 15) * 260 - 5)
 
-
+  sparsity_identifier_F <- rep(0, n_F_attr_zero)
   sparsity_identifier_G <- rep(0, n_G_attr_zero)
   sparsity_identifier_H <- rep(0, n_H_attr_zero)
-  sparsity_identifier_F <- rep(0, n_F_attr_zero)
+  sparsity_identifier_F[(dim(G)[2]+1):n_F_attr] <- 1
   sparsity_identifier_G[(dim(G)[2]+1):n_G_attr] <- 1
   sparsity_identifier_H[(dim(H)[2]+dim(H_5d)[2]+1):n_H_attr] <- 1
-  sparsity_identifier_F[(dim(G)[2]+1):n_F_attr] <- 1
-  sparsity_identifier <- append(sparsity_identifier_G, sparsity_identifier_H)
-  sparsity_identifier <- append(sparsity_identifier, sparsity_identifier_F)
+  sparsity_identifier <- append(sparsity_identifier_F, sparsity_identifier_G)
+  sparsity_identifier <- append(sparsity_identifier, sparsity_identifier_H)
 
-  true_covariate_identifier <- seq(from=1, to=(n_G_attr+n_H_attr+n_F_attr), by=1)
+  true_covariate_identifier <- seq(from=1, to=(n_F_attr+n_G_attr+n_H_attr), by=1)
   true_covariate_identifier[sparsity_identifier==1] <- NaN
 
   # Create vector with covariate names.
+  colname_F <- str_c(rep("F_", n_F_attr), seq(from=1, to=n_F_attr, by=1))
   colname_G <- str_c(rep("G_", n_G_attr), seq(from=1, to=n_G_attr, by=1))
   colname_H <- str_c(rep("H_", n_H_attr), seq(from=1, to=n_H_attr, by=1))
-  colname_F <- str_c(rep("F_", n_F_attr), seq(from=1, to=n_F_attr, by=1))
 
   # Required for first selection step
-  #colnames_dataset <- c("y", "D", colname_G, colname_H)
-  colnames_dataset <- c("y", "D", colname_G, colname_H, colname_F)
+  colnames_dataset <- c("y", "D", colname_F, colname_G, colname_H)
 
   #data <- data.frame(cbind(y, D, F, G, G_zero, H, H_5d, H_zero))
-  data <- data.frame(cbind(y, D, G, G_zero, H, H_5d, H_zero, F, F_zero))
+  data <- data.frame(cbind(y, D, F, F_zero, G, G_zero, H, H_5d, H_zero))
   names(data) <- colnames_dataset
   #return(list(y=y, D=D, F=F, G=G, H=H, true_covariate_identifier=true_covariate_identifier))
   return(list(data=data, true_covariate_identifier=true_covariate_identifier))
@@ -292,7 +288,7 @@ generate_data_houseprices_dgp0 <- function(n=200, n_G_attr=100, corr_G=0, treatm
   # Data-generating process inspired by [PAPER]
 
 
-  # Potential confounding variables
+  # Confounding variables
   # 1x1-km cluster : n / k
   G_1 <- rchisq(n=n, df=3) * 2000 + 15000   # Purchasing power
   G_2 <- rchisq(n=n, df=2) * 1000   # Inhabitants

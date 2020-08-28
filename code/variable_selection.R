@@ -2,14 +2,20 @@
 # This script contains the variable selection methods used
 
 
-simple_select_covariates <- function(y_train, X_train) {
+simple_select_covariates <- function(y_train, X_train, lambda_grid=c(NA, NA)) {
   # Simple selection method
   # Off-the-shelve MSE-optimal Lasso; outcome regressed on entire feature matrix
 
   # Use Lasso to select covariates given their association with outcome Y
-  lasso_one_cv <- cv.glmnet(X_train, y_train, alpha=1, intercept=FALSE,
-                            type.measure="mse", nfolds=10)
-
+  if (is.na(lambda_grid[1])) {
+    lasso_one_cv <- cv.glmnet(X_train, y_train, alpha=1, intercept=FALSE,
+                              type.measure="mse", nfolds=10)
+  }
+  if (is.na(lambda_grid[1]) == FALSE) {
+    lasso_one_cv <- cv.glmnet(X_train, y_train, alpha=1, intercept=FALSE,
+                              lambda=lambda_grid,
+                              type.measure="mse", nfolds=10)
+  }
   lasso_coefs_one <- cbind(coef(lasso_one_cv, s="lambda.min")[-1])
   lasso_coefs_one <- cbind(coef(lasso_one_cv, s="lambda.1se")[-1])
 
@@ -26,15 +32,24 @@ simple_select_covariates <- function(y_train, X_train) {
 
 
 
-double_select_covariates <- function(D_train, Z_train, y_train, X_train) {
+double_select_covariates <- function(D_train, Z_train, y_train, X_train, lambda_grid=c(NA, NA)) {
   # Double-selection procedure following Belloni et al. (2014)
 
   # 1. Use Lasso to select covariates given their association with outcome Y
-  selected_covars_one <- simple_select_covariates(y_train=y_train, X_train=X_train)
+  selected_covars_one <- simple_select_covariates(y_train=y_train,
+                                                  X_train=X_train,
+                                                  lambda_grid=lambda_grid)
 
   # 2. Use Lasso to select covariates given their association with tratment D
-  lasso_two_cv <- cv.glmnet(Z_train, D_train, alpha=1, intercept=FALSE,
-                            type.measure="mse", nfolds=10)
+  if (is.na(lambda_grid[1])) {
+    lasso_two_cv <- cv.glmnet(Z_train, D_train, alpha=1, intercept=FALSE,
+                              type.measure="mse", nfolds=10)
+  }
+  if (is.na(lambda_grid[1]) == FALSE) {
+    lasso_two_cv <- cv.glmnet(Z_train, D_train, alpha=1, intercept=FALSE,
+                              lambda=lambda_grid,
+                              type.measure="mse", nfolds=10)
+  }
   lasso_coefs_two <- cbind(coef(lasso_two_cv, s="lambda.min")[-1])
   lasso_coefs_two <- cbind(coef(lasso_two_cv, s="lambda.1se")[-1])
 

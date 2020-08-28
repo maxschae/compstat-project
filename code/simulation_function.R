@@ -6,7 +6,7 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
                                n, n_F_attr, n_G_attr, n_H_attr, corr_G=0,
                                treatment_effect, beta_GD_size,
                                beta_GY_size, beta_F_size, beta_H_size,
-                               nonzero_controls) {
+                               nonzero_controls, lambda_grid=c(NA, NA)) {
 
   # Housekeeping
   colnames_confounders <- str_c(rep("G_", n_G_attr), seq(from=1, to=n_G_attr, by=1))
@@ -70,9 +70,15 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
                                     nonzero_controls=nonzero_controls)
       }
       if (dgp == "houseprices") {
-        data_set <- generate_data_houseprices_dgp0(n=n, n_G_attr=n_G_attr,
-                                                   corr_G=corr_G,
-                                                   beta_GY_inflator=beta_GY_size)
+        #data_set <- generate_data_houseprices_dgp0(n=n, n_G_attr=n_G_attr,
+        #                                           corr_G=corr_G,
+        #                                           beta_GY_inflator=beta_GY_size)
+        data_set <- generate_data_houseprices(n=n, n_G_attr=n_G_attr,
+                                              n_F_attr=n_F_attr, n_H_attr=n_H_attr,
+                                              corr_G=corr_G,
+                                              beta_GY_inflator=beta_GY_size)
+
+        lambda_grid <- seq(0, 6000, by=3)
       }
 
       data <- data_set$data
@@ -82,7 +88,8 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
                                             true_covariate_identifier=true_covariate_identifier,
                                             colnames_covariates=colnames_covariates,
                                             colnames_confounders=colnames_confounders,
-                                            treatment_effect=treatment_effect)
+                                            treatment_effect=treatment_effect,
+                                            lambda_grid=lambda_grid)
 
       # Metrics SIMPLE --- confounder bias
       confounder_bias_vec_simple[i] <- simulation_results$confounder_bias_simple
@@ -185,7 +192,8 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
                                               colnames_covariates=colnames_covariates,
                                               colnames_confounders=colnames_confounders,
-                                              treatment_effect=treatment_effect))
+                                              treatment_effect=treatment_effect,
+                                              lambda_grid=lambda_grid))
       }
 
       if (iter_over=="beta_GY_size") {
@@ -219,13 +227,16 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
                                                 n_F_attr=n_F_attr, n_H_attr=n_H_attr,
                                                 corr_G=corr_G,
                                                 beta_GY_inflator=SIM_PARAMETER)
+
+          lambda_grid <- seq(0, 6000, by=10)
         }
 
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
                                               colnames_covariates=colnames_covariates,
                                               colnames_confounders=colnames_confounders,
-                                              treatment_effect=treatment_effect))
+                                              treatment_effect=treatment_effect,
+                                              lambda_grid=lambda_grid))
       }
       if (iter_over=="beta_GD_size") {
         if (dgp == "A") {
@@ -254,12 +265,15 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
           data_set <- generate_data_houseprices_dgp0(n=n, n_G_attr=n_G_attr,
                                                      corr_G=corr_G,
                                                      beta_GY_inflator=beta_GY_inflator)
+
+          #lambda_grid <- seq(0, 6000, by=3)
         }
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
                                               colnames_covariates=colnames_covariates,
                                               colnames_confounders=colnames_confounders,
-                                              treatment_effect=treatment_effect))
+                                              treatment_effect=treatment_effect,
+                                              lambda_grid=lambda_grid))
       }
       if (iter_over=="n_G_attr") {
         colnames_confounders <- str_c(rep("G_", SIM_PARAMETER), seq(from=1, to=SIM_PARAMETER, by=1))
@@ -294,13 +308,16 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
           data_set <- generate_data_houseprices_dgp0(n=n, n_G_attr=SIM_PARAMETER,
                                                      corr_G=corr_G,
                                                      beta_GY_inflator=beta_GY_size)
+
+          #lambda_grid <- seq(0, 6000, by=3)
         }
 
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
                                               colnames_covariates=colnames_covariates,
                                               colnames_confounders=colnames_confounders,
-                                              treatment_effect=treatment_effect))
+                                              treatment_effect=treatment_effect,
+                                              lambda_grid=lambda_grid))
       }
 
 
@@ -326,12 +343,15 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
           data_set <- generate_data_houseprices_dgp0(n=n, n_G_attr=n_G_attr,
                                                      corr_G=corr_G,
                                                      beta_GY_inflator=beta_GY_size)
+
+          #lambda_grid <- seq(0, 6000, by=3)
         }
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
                                               colnames_covariates=colnames_covariates,
                                               colnames_confounders=colnames_confounders,
-                                              treatment_effect=treatment_effect))
+                                              treatment_effect=treatment_effect,
+                                              lambda_grid=lambda_grid))
       }
       if (iter_over=="beta_F_size") {
         if (dgp == "B") {
@@ -351,26 +371,31 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
           data_set <- generate_data_houseprices_dgp0(n=n, n_G_attr=n_G_attr,
                                                      corr_G=corr_G,
                                                      beta_GY_inflator=beta_GY_size)
+
+          #lambda_grid <- seq(0, 6000, by=3)
         }
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
                                               colnames_covariates=colnames_covariates,
                                               colnames_confounders=colnames_confounders,
-                                              treatment_effect=treatment_effect))
+                                              treatment_effect=treatment_effect,
+                                              lambda_grid=lambda_grid))
       }
       if (iter_over=="corr_confounders") {
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
                                               colnames_covariates=colnames_covariates,
                                               colnames_confounders=colnames_confounders,
-                                              treatment_effect=treatment_effect))
+                                              treatment_effect=treatment_effect,
+                                              lambda_grid=lambda_grid))
       }
       if (iter_over=="treatment_effect") {
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
                                               colnames_covariates=colnames_covariates,
                                               colnames_confounders=colnames_confounders,
-                                              treatment_effect=treatment_effect))
+                                              treatment_effect=treatment_effect,
+                                              lambda_grid=lambda_grid))
       }
 
       # Metrics SIMPLE --- confounder bias
