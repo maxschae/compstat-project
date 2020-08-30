@@ -227,7 +227,6 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
                                                 n_F_attr=n_F_attr, n_H_attr=n_H_attr,
                                                 corr_G=corr_G,
                                                 beta_GY_inflator=SIM_PARAMETER)
-
           lambda_grid <- seq(0, 6000, by=10)
         }
 

@@ -2,8 +2,8 @@
 # Define the data-generating processes
 
 
-generate_data_A <- function(n=200, n_G_attr=30, corr_G=0, treatment_effect=.5,
-                            beta_GD_size=.5, beta_GY_size=.25,
+generate_data_A <- function(n=400, n_G_attr=100, corr_G=0, treatment_effect=.25,
+                            beta_GD_size=.25, beta_GY_size=.1,
                             nonzero_controls=NaN) {
 
   # Specify variance-covariance matrix
@@ -161,6 +161,7 @@ generate_data_houseprices <- function(n=200, n_F_attr=100, n_G_attr=100, n_H_att
 
   # Coefficients
   beta_GD <- c(1, -.5, .1, -1)
+  #beta_GD <- c(.75, .25, .1, -1) #TODO
   beta_GY <- c(.0382, .031, -.00002, -.0042)
 
   # House characteristics
@@ -211,7 +212,7 @@ generate_data_houseprices <- function(n=200, n_F_attr=100, n_G_attr=100, n_H_att
   # Outcome
   # In the paper, the house price equation is expressed in log house prices
   # and 'regular' units on the right-hand-side. Here, house prices are in EUR
-  # and coefficients are scaled down up by roughly one-percent of the median house price.
+  # and coefficients are scaled up by roughly one-percent of the median house price.
   c <- .01*175000
   treatment_effect <- beta_DY*c
   beta_GY <- beta_GY * beta_GY_inflator

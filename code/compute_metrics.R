@@ -6,7 +6,7 @@
 
 compute_metrics <- function(data, true_covariate_identifier, selection_method,
                             colnames_covariates, colnames_confounders,
-                            treatment_effect) {
+                            treatment_effect, lambda_grid=c(NA, NA)) {
 
 
 
@@ -29,7 +29,9 @@ compute_metrics <- function(data, true_covariate_identifier, selection_method,
   # *Selection section*
   # Select covariates according to the SIMPLE selection method
   selection_method <- "simple"
-  selection_identifier_simple <- simple_select_covariates(y_train=y_train, X_train=X_train)
+  selection_identifier_simple <- simple_select_covariates(y_train=y_train,
+                                                          X_train=X_train,
+                                                          lambda_grid=lambda_grid)
 
   if (length(true_covariate_identifier) != length(selection_identifier_simple)) {
     print("Warning: check how true_covariate_identifier vector is initialized in data_generating_process.R")
@@ -72,10 +74,9 @@ compute_metrics <- function(data, true_covariate_identifier, selection_method,
 
   # Check whether individual confounder was excluded from model
   # For 'houseprices', check first confounder 'purchasing_power'
-  #TODO
-  selection_confounder_identifier <- selection_identifier_simple
-  selection_confounder_identifier[is.na(selection_confounder_identifier)] <- 0
-  selection_confounder_identifier_simple <- selection_confounder_identifier[1]
+  selection_confounder_identifier_simple <- covariate_identifier_G[2, ]
+  selection_confounder_identifier_simple[selection_confounder_identifier_simple > 0] <- 1
+  selection_confounder_identifier_simple <- selection_confounder_identifier_simple[1]
 
 
   # Select covariates according to the DOUBLE selection method
@@ -83,7 +84,8 @@ compute_metrics <- function(data, true_covariate_identifier, selection_method,
   selection_identifier_double <- double_select_covariates(D_train=D_train,
                                                           Z_train=Z_train,
                                                           y_train=y_train,
-                                                          X_train=X_train)
+                                                          X_train=X_train,
+                                                          lambda_grid=lambda_grid)
 
   if (length(true_covariate_identifier) != length(selection_identifier_double)) {
     print("Warning: check how true_covariate_identifier vector is initialized in data_generating_process.R")
@@ -109,10 +111,9 @@ compute_metrics <- function(data, true_covariate_identifier, selection_method,
 
   # Check whether individual confounder was excluded from model
   # For 'houseprices', check first confounder 'purchasing_power'
-  #TODO
-  selection_confounder_identifier <- selection_identifier_double
-  selection_confounder_identifier[is.na(selection_confounder_identifier)] <- 0
-  selection_confounder_identifier_double <- selection_confounder_identifier[1]
+  selection_confounder_identifier_double <- covariate_identifier_G[2, ]
+  selection_confounder_identifier_double[selection_confounder_identifier_double > 0] <- 1
+  selection_confounder_identifier_double <- selection_confounder_identifier_double[1]
 
 
 
