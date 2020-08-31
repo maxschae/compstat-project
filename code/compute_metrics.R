@@ -65,11 +65,10 @@ compute_metrics <- function(data, true_covariate_identifier, selection_method,
   fn_selection_count_G <- sum((covariate_identifier_G[1,] != covariate_identifier_G[2,]) & (covariate_identifier_G[1,] == 0))
 
 
-  #TODO
-  tp_selection_rate_G_simple <- tp_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
-  tn_selection_rate_G_simple <- tn_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
-  fp_selection_rate_G_simple <- fp_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
-  fn_selection_rate_G_simple <- fn_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
+  tp_selection_rate_G_simple <- tp_selection_count_G #/ n_G_attr
+  tn_selection_rate_G_simple <- tn_selection_count_G #/ n_G_attr
+  fp_selection_rate_G_simple <- fp_selection_count_G #/ n_G_attr
+  fn_selection_rate_G_simple <- fn_selection_count_G #/ n_G_attr
 
 
   # Check whether individual confounder was excluded from model
@@ -103,11 +102,11 @@ compute_metrics <- function(data, true_covariate_identifier, selection_method,
   tn_selection_count_G <- sum((covariate_identifier_G[1,] == covariate_identifier_G[2,]) & (covariate_identifier_G[1,] != 0))
   fp_selection_count_G <- sum((covariate_identifier_G[1,] != covariate_identifier_G[2,]) & (covariate_identifier_G[1,] != 0))
   fn_selection_count_G <- sum((covariate_identifier_G[1,] != covariate_identifier_G[2,]) & (covariate_identifier_G[1,] == 0))
-  #TODO
-  tp_selection_rate_G_double <- tp_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
-  tn_selection_rate_G_double <- tn_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
-  fp_selection_rate_G_double <- fp_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
-  fn_selection_rate_G_double <- fn_selection_count_G #/ n_G_attr #/(nonzero_controls+1e-4)
+
+  tp_selection_rate_G_double <- tp_selection_count_G #/ n_G_attr
+  tn_selection_rate_G_double <- tn_selection_count_G #/ n_G_attr
+  fp_selection_rate_G_double <- fp_selection_count_G #/ n_G_attr
+  fn_selection_rate_G_double <- fn_selection_count_G #/ n_G_attr
 
   # Check whether individual confounder was excluded from model
   # For 'houseprices', check first confounder 'purchasing_power'

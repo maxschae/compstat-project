@@ -44,7 +44,7 @@ lasso_coef_shrink_plot <- function(df, lambda_grid, lambda_min=NaN, figure_name=
           ggtitle(figure_name, subtitle=title) +
           ylab("Coefficient Value") +
           xlab("Lambda") +
-          theme_grey(base_size=15) #theme_bw(base_size=15)
+          theme_grey(base_size=15)
 
   if (is.na(lambda_min) == FALSE) {
     plot <- plot + geom_vline(xintercept=lambda_min, linetype="dashed",
@@ -57,10 +57,7 @@ lasso_coef_shrink_plot <- function(df, lambda_grid, lambda_min=NaN, figure_name=
 
 
 
-
-
 # Variable selection plot (TP, TN, FP, FN)
-
 
 variable_selection_rate_plot <- function(df, selection_method, subtitle="", xlab="", ylim=NaN) {
 
@@ -246,7 +243,6 @@ produce_lasso_coef_shrink_plot <- function(dgp="A", n=400, n_F_attr=NaN, n_G_att
 
   if (dgp == "A") {
     colnames_covariates <- str_c(rep("G_", n_G_attr), seq(from=1, to=n_G_attr, by=1))
-    #colnumbers_covariates <- seq(from=1, to=n_G_attr, by=1) #TODO delete
     # Draw dataset which is then split into training and test
     data_set <- generate_data_A(n=n,
                                 n_G_attr=n_G_attr,
@@ -286,7 +282,6 @@ produce_lasso_coef_shrink_plot <- function(dgp="A", n=400, n_F_attr=NaN, n_G_att
   X_train <- data.matrix(cbind(D_train, Z_train))
 
 
-
   # Retrieve true covariate identifier
   true_covariate_identifier <- data_set$true_covariate_identifier
   names(true_covariate_identifier) <- colnames_covariates
@@ -296,7 +291,6 @@ produce_lasso_coef_shrink_plot <- function(dgp="A", n=400, n_F_attr=NaN, n_G_att
   # Change column name to identify sparse covariates
   colnames_two_effect <- str_c(colnames_covariates, true_covariate_identifier)
   colnames_one_effect <- c("D", colnames_two_effect)
-
 
 
   # Variable selection in "first" and "second" stage
@@ -395,36 +389,6 @@ produce_bias_hist <- function(dgp, R, n, n_F_attr, n_G_attr, n_H_attr,
 
   return(list(hist_simple=hist_simple, hist_double=hist_double))
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
