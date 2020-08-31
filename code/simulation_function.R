@@ -12,14 +12,7 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
   colnames_confounders <- str_c(rep("G_", n_G_attr), seq(from=1, to=n_G_attr, by=1))
   colnames_covariates <- str_c(rep("G_", n_G_attr), seq(from=1, to=n_G_attr, by=1))
 
-  if (dgp == "B") {
-    colnames_covariates <- c(str_c(rep("F_", n_F_attr), seq(from=1, to=n_F_attr, by=1)),
-                             str_c(rep("G_", n_G_attr), seq(from=1, to=n_G_attr, by=1)),
-                             str_c(rep("H_", n_H_attr), seq(from=1, to=n_H_attr, by=1)))
-  }
   if (dgp == "houseprices") {
-    #colnames_covariates <- str_c(rep("G_", n_G_attr), seq(from=1, to=n_G_attr, by=1))
-    #TODO above for dgp-a-houseprices, below for houseprices (in line with -b)
     colnames_covariates <- c(str_c(rep("F_", n_F_attr), seq(from=1, to=n_F_attr, by=1)),
                              str_c(rep("G_", n_G_attr), seq(from=1, to=n_G_attr, by=1)),
                              str_c(rep("H_", n_H_attr), seq(from=1, to=n_H_attr, by=1)))
@@ -56,23 +49,7 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
                                     beta_GY_size=beta_GY_size,
                                     nonzero_controls=nonzero_controls)
       }
-      if (dgp == "B") {
-        data_set <- generate_data_B(n=n,
-                                    n_G_attr=n_G_attr,
-                                    n_F_attr=n_F_attr,
-                                    n_H_attr=n_H_attr,
-                                    corr_G=0,
-                                    treatment_effect=treatment_effect,
-                                    beta_GD_size=beta_GD_size,
-                                    beta_GY_size=beta_GY_size,
-                                    beta_H_size=beta_H_size,
-                                    beta_F_size=beta_F_size,
-                                    nonzero_controls=nonzero_controls)
-      }
       if (dgp == "houseprices") {
-        #data_set <- generate_data_houseprices_dgp0(n=n, n_G_attr=n_G_attr,
-        #                                           corr_G=corr_G,
-        #                                           beta_GY_inflator=beta_GY_size)
         data_set <- generate_data_houseprices(n=n, n_G_attr=n_G_attr,
                                               n_F_attr=n_F_attr, n_H_attr=n_H_attr,
                                               corr_G=corr_G,
@@ -174,20 +151,6 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
                                       beta_GY_size=beta_GY_size,
                                       nonzero_controls=SIM_PARAMETER)
         }
-        if (dgp == "B") {
-          data_set <- generate_data_B(n=n,
-                                      n_G_attr=n_G_attr,
-                                      n_F_attr=n_F_attr,
-                                      n_H_attr=n_H_attr,
-                                      corr_G=corr_G,
-                                      treatment_effect=treatment_effect,
-                                      beta_GD_size=beta_GD_size,
-                                      beta_GY_size=beta_GY_size,
-                                      beta_H_size=beta_H_size,
-                                      beta_F_size=beta_F_size,
-                                      nonzero_controls=SIM_PARAMETER)
-        }
-
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
                                               colnames_covariates=colnames_covariates,
@@ -206,23 +169,7 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
                                       beta_GY_size=SIM_PARAMETER,
                                       nonzero_controls=nonzero_controls)
         }
-        if (dgp == "B") {
-          data_set <- generate_data_B(n=n,
-                                      n_G_attr=n_G_attr,
-                                      n_F_attr=n_F_attr,
-                                      n_H_attr=n_H_attr,
-                                      corr_G=corr_G,
-                                      treatment_effect=treatment_effect,
-                                      beta_GD_size=beta_GD_size,
-                                      beta_GY_size=SIM_PARAMETER,
-                                      beta_H_size=beta_H_size,
-                                      beta_F_size=beta_F_size,
-                                      nonzero_controls=nonzero_controls)
-        }
         if (dgp == "houseprices") {
-          #data_set <- generate_data_houseprices_dgp0(n=n, n_G_attr=n_G_attr,
-          #                                           corr_G=corr_G,
-          #                                           beta_GY_inflator=SIM_PARAMETER)
           data_set <- generate_data_houseprices(n=n, n_G_attr=n_G_attr,
                                                 n_F_attr=n_F_attr, n_H_attr=n_H_attr,
                                                 corr_G=corr_G,
@@ -247,25 +194,12 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
                                       beta_GY_size=beta_GY_size,
                                       nonzero_controls=nonzero_controls)
         }
-        if (dgp == "B") {
-          data_set <- generate_data_B(n=n,
-                                      n_G_attr=n_G_attr,
-                                      n_F_attr=n_F_attr,
-                                      n_H_attr=n_H_attr,
-                                      corr_G=corr_G,
-                                      treatment_effect=treatment_effect,
-                                      beta_GD_size=SIM_PARAMETER,
-                                      beta_GY_size=beta_GY_size,
-                                      beta_H_size=beta_H_size,
-                                      beta_F_size=beta_F_size,
-                                      nonzero_controls=nonzero_controls)
-        }
         if (dgp == "houseprices") {
-          data_set <- generate_data_houseprices_dgp0(n=n, n_G_attr=n_G_attr,
-                                                     corr_G=corr_G,
-                                                     beta_GY_inflator=beta_GY_inflator)
+          data_set <- generate_data_houseprices(n=n, n_G_attr=n_G_attr,
+                                                n_F_attr=n_F_attr, n_H_attr=n_H_attr,
+                                                beta_GD_inflator=SIM_PARAMETER)
 
-          #lambda_grid <- seq(0, 6000, by=3)
+          lambda_grid <- seq(0, 6000, by=3)
         }
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
@@ -287,28 +221,12 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
                                       beta_GY_size=beta_GY_size,
                                       nonzero_controls=nonzero_controls)
         }
-        if (dgp == "B") {
-          colnames_covariates <- c(str_c(rep("F_", n_F_attr), seq(from=1, to=n_F_attr, by=1)),
-                                   str_c(rep("G_", SIM_PARAMETER), seq(from=1, to=SIM_PARAMETER, by=1)),
-                                   str_c(rep("H_", n_H_attr), seq(from=1, to=n_H_attr, by=1)))
-          data_set <- generate_data_B(n=n,
-                                      n_G_attr=SIM_PARAMETER,
-                                      n_F_attr=n_F_attr,
-                                      n_H_attr=n_H_attr,
-                                      corr_G=corr_G,
-                                      treatment_effect=treatment_effect,
-                                      beta_GD_size=beta_GD_size,
-                                      beta_GY_size=beta_GY_size,
-                                      beta_H_size=beta_H_size,
-                                      beta_F_size=beta_F_size,
-                                      nonzero_controls=nonzero_controls)
-        }
         if (dgp == "houseprices") {
-          data_set <- generate_data_houseprices_dgp0(n=n, n_G_attr=SIM_PARAMETER,
-                                                     corr_G=corr_G,
-                                                     beta_GY_inflator=beta_GY_size)
+          data_set <- generate_data_houseprices(n=n, n_G_attr=SIM_PARAMETER,
+                                                n_F_attr=n_F_attr, n_H_attr=n_H_attr,
+                                                beta_GY_inflator=beta_GY_size)
 
-          #lambda_grid <- seq(0, 6000, by=3)
+          lambda_grid <- seq(0, 6000, by=3)
         }
 
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
@@ -325,25 +243,13 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
 
       if (iter_over=="n_F_attr") {
         colname_F <- str_c(rep("F_", SIM_PARAMETER), seq(from=1, to=SIM_PARAMETER, by=1))
-        if (dgp == "B") {
-          data_set <- generate_data_B(n=n,
-                                      n_G_attr=n_G_attr,
-                                      n_F_attr=SIM_PARAMETER,
-                                      n_H_attr=n_H_attr,
-                                      corr_G=corr_G,
-                                      treatment_effect=treatment_effect,
-                                      beta_GD_size=beta_GD_size,
-                                      beta_GY_size=beta_GY_size,
-                                      beta_H_size=beta_H_size,
-                                      beta_F_size=beta_F_size,
-                                      nonzero_controls=nonzero_controls)
-        }
-        if (dgp == "houseprices") {
-          data_set <- generate_data_houseprices_dgp0(n=n, n_G_attr=n_G_attr,
-                                                     corr_G=corr_G,
-                                                     beta_GY_inflator=beta_GY_size)
 
-          #lambda_grid <- seq(0, 6000, by=3)
+        if (dgp == "houseprices") {
+          data_set <- generate_data_houseprices(n=n, n_G_attr=n_G_attr,
+                                                n_F_attr=n_F_attr, n_H_attr=n_H_attr,
+                                                beta_GY_inflator=beta_GY_size)
+
+          lambda_grid <- seq(0, 6000, by=3)
         }
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
@@ -353,25 +259,12 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
                                               lambda_grid=lambda_grid))
       }
       if (iter_over=="beta_F_size") {
-        if (dgp == "B") {
-          data_set <- generate_data_B(n=n,
-                                      n_G_attr=n_G_attr,
-                                      n_F_attr=n_F_attr,
-                                      n_H_attr=n_H_attr,
-                                      corr_G=corr_G,
-                                      treatment_effect=treatment_effect,
-                                      beta_GD_size=beta_GD_size,
-                                      beta_GY_size=beta_GY_size,
-                                      beta_H_size=beta_H_size,
-                                      beta_F_size=SIM_PARAMETER,
-                                      nonzero_controls=nonzero_controls)
-        }
         if (dgp == "houseprices") {
-          data_set <- generate_data_houseprices_dgp0(n=n, n_G_attr=n_G_attr,
-                                                     corr_G=corr_G,
-                                                     beta_GY_inflator=beta_GY_size)
+          data_set <- generate_data_houseprices(n=n, n_G_attr=n_G_attr,
+                                                corr_G=corr_G,
+                                                beta_GY_inflator=beta_GY_size)
 
-          #lambda_grid <- seq(0, 6000, by=3)
+          lambda_grid <- seq(0, 6000, by=3)
         }
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
@@ -381,6 +274,23 @@ simulation_wrapper <- function(dgp, R, iter_over, sim_parameter_vec,
                                               lambda_grid=lambda_grid))
       }
       if (iter_over=="corr_confounders") {
+        if (dgp == "A") {
+          data_set <- generate_data_A(n=n,
+                                      n_G_attr=n_G_attr,
+                                      corr_G=SIM_PARAMETER,
+                                      treatment_effect=treatment_effect,
+                                      beta_GD_size=beta_GD_size,
+                                      beta_GY_size=beta_GY_size,
+                                      nonzero_controls=nonzero_controls)
+        }
+        if (dgp == "houseprices") {
+          data_set <- generate_data_houseprices(n=n, n_G_attr=n_G_attr,
+                                                n_F_attr=n_F_attr, n_H_attr=n_H_attr,
+                                                corr_G=SIM_PARAMETER,
+                                                beta_GD_inflator=beta_GD_size)
+
+          lambda_grid <- seq(0, 6000, by=3)
+        }
         sim_results_vec <- replicate(R, compute_metrics(data=data_set$data,
                                               true_covariate_identifier=data_set$true_covariate_identifier,
                                               colnames_covariates=colnames_covariates,

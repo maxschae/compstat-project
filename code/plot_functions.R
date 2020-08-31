@@ -255,31 +255,9 @@ produce_lasso_coef_shrink_plot <- function(dgp="A", n=400, n_F_attr=NaN, n_G_att
                                 beta_GY_size=beta_GY_size,
                                 nonzero_controls=nonzero_controls)
   }
-  if (dgp == "B") {
-    colnames_covariates <- c(str_c(rep("F_", n_F_attr), seq(from=1, to=n_F_attr, by=1)),
-                             str_c(rep("G_", n_G_attr), seq(from=1, to=n_G_attr, by=1)),
-                             str_c(rep("H_", n_H_attr), seq(from=1, to=n_H_attr, by=1)))
 
-    #colnumbers_covariates <- seq(from=1, to=(n_F_attr + n_G_attr + n_H_attr), by=1) #TODO
-    # Draw dataset which is then split into training and test
-    data_set <- generate_data_B(n=n,
-                                n_F_attr=n_F_attr,
-                                n_G_attr=n_G_attr,
-                                n_H_attr=n_H_attr,
-                                treatment_effect=treatment_effect,
-                                beta_GD_size=beta_GD_size,
-                                beta_GY_size=beta_GY_size,
-                                beta_H_size=beta_H_size,
-                                beta_F_size=beta_F_size,
-                                nonzero_controls=nonzero_controls)
-  }
   if (dgp == "houseprices") {
-    #colnames_covariates <- str_c(rep("G_", n_G_attr), seq(from=1, to=n_G_attr, by=1))
-    #colnumbers_covariates <- seq(from=1, to=n_G_attr, by=1) #TODO
     # Draw dataset which is then split into training and test
-    #data_set <- generate_data_houseprices_dgp0(n=n, n_G_attr=n_G_attr, corr_G=0,
-    #                                           treatment_effect=-7, beta_GY_inflator=1)
-
     colnames_covariates <- c(str_c(rep("G_", n_G_attr), seq(from=1, to=n_G_attr, by=1)),
                              str_c(rep("H_", n_H_attr), seq(from=1, to=n_H_attr, by=1)),
                              str_c(rep("F_", n_F_attr), seq(from=1, to=n_F_attr, by=1)))

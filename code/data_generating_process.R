@@ -24,8 +24,7 @@ generate_data_A <- function(n=400, n_G_attr=100, corr_G=0, treatment_effect=.25,
   # Sparsity
   zero_coefs_GDY <- sample(1:n_G_attr, size=(n_G_attr-nonzero_controls))
 
-  #beta_GD <- rnorm(n=n_G_attr, mean=beta_GD_size, sd=.1*beta_GD_size)
-  #beta_GY <- rnorm(n=n_G_attr, mean=beta_GY_size, sd=.1*beta_GY_size)
+  # Direct effect sizes
   beta_GD <- rep(beta_GD_size, n_G_attr)
   beta_GY <- rep(beta_GY_size, n_G_attr)
   beta_GD[zero_coefs_GDY] <- 0
@@ -136,10 +135,10 @@ generate_data_B <- function(n=200, n_F_attr=30, n_G_attr=30, n_H_attr=30, corr_G
 
 
 generate_data_houseprices <- function(n=200, n_F_attr=100, n_G_attr=100, n_H_attr=100,
-                                      beta_GY_inflator=1, corr_G=0) {
+                                      beta_GY_inflator=1, beta_GD_inflator=1, corr_G=0) {
 
 
-  # Data-generating process inspired by [PAPER]
+  # Data-generating process inspired by Frondel et al. (2019)
 
 
 
@@ -161,7 +160,6 @@ generate_data_houseprices <- function(n=200, n_F_attr=100, n_G_attr=100, n_H_att
 
   # Coefficients
   beta_GD <- c(1, -.5, .1, -1)
-  #beta_GD <- c(.75, .25, .1, -1) #TODO
   beta_GY <- c(.0382, .031, -.00002, -.0042)
 
   # House characteristics
@@ -202,6 +200,7 @@ generate_data_houseprices <- function(n=200, n_F_attr=100, n_G_attr=100, n_H_att
   eps_D <- rnorm(n=n, mean=0, sd=100)
   eps_Y <- rnorm(n=n, mean=0, sd=1000)
 
+  beta_GD <- beta_GD * beta_GD_inflator
   # Treatment (distance to next wind turbine in km)
   # DGP-1
   D <- (-12000 + G %*% beta_GD + F %*% beta_F + eps_D) #/ 1000
